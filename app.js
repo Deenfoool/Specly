@@ -1,26 +1,73 @@
 const demoData = {
+  category: "smartphone",
   products: [
-    { store: "DNS", name: "Radeon RX 580 8 GB", price: "—", badge: "Товар 01", url: "https://www.dns-shop.ru/" },
-    { store: "М.Видео", name: "GeForce GTX 1060 6 GB", price: "—", badge: "Товар 02", url: "https://www.mvideo.ru/" }
+    {
+      store: "Магазин A",
+      name: "Nova One 256 GB",
+      price: "69 990 ₽",
+      badge: "Товар 01",
+      url: null,
+      image: null,
+      offers: [
+        { store: "Магазин A", price: "69 990 ₽", available: true, url: null },
+        { store: "Магазин C", price: "67 490 ₽", available: true, url: null },
+        { store: "Маркетплейс", price: "66 990 ₽", available: true, url: null }
+      ]
+    },
+    {
+      store: "Магазин B",
+      name: "Orbit Pro 256 GB",
+      price: "72 990 ₽",
+      badge: "Товар 02",
+      url: null,
+      image: null,
+      offers: [
+        { store: "Магазин B", price: "72 990 ₽", available: true, url: null },
+        { store: "Магазин C", price: "71 490 ₽", available: true, url: null },
+        { store: "Маркетплейс", price: "70 890 ₽", available: false, url: null }
+      ]
+    }
   ],
-  summary: "RX 580 предлагает больший объём видеопамяти и более широкую шину памяти. GTX 1060 заметно экономичнее по энергопотреблению. Итоговый выбор зависит от конкретных цен, состояния карты и сценария использования.",
+  summary: "У Nova One больше аккумулятор и ниже цена. Orbit Pro легче и предлагает экран с более высокой частотой обновления. Выбор зависит от того, что важнее: автономность и цена или экран и вес.",
   specs: [
-    { key: "gpu", label: "Графический процессор", a: "Radeon RX 580", b: "GeForce GTX 1060", diff: "Разные GPU", important: true, type: "neutral" },
-    { key: "vram", label: "Видеопамять", a: "8 ГБ", b: "6 ГБ", diff: "RX 580 +2 ГБ", important: true, type: "win-a" },
-    { key: "memory", label: "Тип памяти", a: "GDDR5", b: "GDDR5", diff: "Одинаково", important: true, type: "same" },
-    { key: "bus", label: "Шина памяти", a: "256 бит", b: "192 бит", diff: "RX 580 +64 бит", important: true, type: "win-a" },
-    { key: "tdp", label: "Энергопотребление (TDP)", a: "185 Вт", b: "120 Вт", diff: "GTX 1060 −65 Вт", important: true, type: "win-b" },
-    { key: "power", label: "Доп. питание", a: "1 × 8-pin", b: "1 × 6-pin", diff: "Разные требования", important: true, type: "neutral" }
+    { key: "display", label: "Экран", a: "6,7″ OLED", b: "6,7″ OLED", diff: "Одинаковый тип и диагональ", important: true, type: "same" },
+    { key: "refresh", label: "Частота экрана", a: "120 Гц", b: "144 Гц", diff: "Второй товар +24 Гц", important: true, type: "win-b" },
+    { key: "ram", label: "Оперативная память", a: "12 ГБ", b: "12 ГБ", diff: "Одинаково", important: true, type: "same" },
+    { key: "storage", label: "Память", a: "256 ГБ", b: "256 ГБ", diff: "Одинаково", important: true, type: "same" },
+    { key: "battery", label: "Аккумулятор", a: "5200 мА·ч", b: "4700 мА·ч", diff: "Первый товар +500 мА·ч", important: true, type: "win-a" },
+    { key: "weight", label: "Вес", a: "205 г", b: "188 г", diff: "Второй товар легче на 17 г", important: false, type: "win-b" }
   ]
 };
 
+const CATEGORY_LABELS = {
+  gpu: "Видеокарты",
+  cpu: "Процессоры",
+  smartphone: "Смартфоны",
+  laptop: "Ноутбуки",
+  monitor: "Мониторы",
+  tv: "Телевизоры",
+  ssd: "SSD",
+  headphones: "Наушники",
+  refrigerator: "Холодильники",
+  "washing-machine": "Стиральные машины",
+  generic: "Товары"
+};
+
 const els = {
-  urlA: document.querySelector("#urlA"), urlB: document.querySelector("#urlB"),
-  compareButton: document.querySelector("#compareButton"), demoButton: document.querySelector("#demoButton"),
-  formNote: document.querySelector("#formNote"), results: document.querySelector("#results"),
-  productGrid: document.querySelector("#productGrid"), summaryCard: document.querySelector("#summaryCard"),
-  specBody: document.querySelector("#specBody"), tableProductA: document.querySelector("#tableProductA"),
-  tableProductB: document.querySelector("#tableProductB")
+  urlA: document.querySelector("#urlA"),
+  urlB: document.querySelector("#urlB"),
+  compareButton: document.querySelector("#compareButton"),
+  demoButton: document.querySelector("#demoButton"),
+  formNote: document.querySelector("#formNote"),
+  results: document.querySelector("#results"),
+  resultContext: document.querySelector("#resultContext"),
+  productGrid: document.querySelector("#productGrid"),
+  summaryCard: document.querySelector("#summaryCard"),
+  specBody: document.querySelector("#specBody"),
+  tableProductA: document.querySelector("#tableProductA"),
+  tableProductB: document.querySelector("#tableProductB"),
+  offersSection: document.querySelector("#offersSection"),
+  offersGrid: document.querySelector("#offersGrid")
 };
 
 const YANDEX_API_ENDPOINT = "https://functions.yandexcloud.net/d4e8s55p90sv6i1lj2ii";
@@ -45,39 +92,88 @@ function hostLabel(value) {
   catch { return "магазин"; }
 }
 
+function categoryLabel(category) {
+  if (!category) return "Категория определяется автоматически";
+  return CATEGORY_LABELS[category] || humanizeCategory(category);
+}
+
+function humanizeCategory(value) {
+  return String(value)
+    .replace(/[-_]+/g, " ")
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
 function showNote(text, state = "") {
   els.formNote.className = `form-note ${state}`.trim();
   els.formNote.textContent = text;
 }
 
-function renderProducts(products) {
-  els.productGrid.innerHTML = products.map((product) => `
-    <article class="product-card">
-      <div class="product-store">${escapeHtml(product.store)}</div>
-      <h3>${escapeHtml(product.name)}</h3>
-      <div class="product-meta">
-        <span class="product-price">${escapeHtml(product.price)}</span>
-        <span class="product-badge">${escapeHtml(product.badge)}</span>
-      </div>
-    </article>`).join("");
-  els.tableProductA.textContent = products[0].name;
-  els.tableProductB.textContent = products[1].name;
+function renderContext(data) {
+  const category = categoryLabel(data.category);
+  const count = data.specs.length;
+  const differences = data.specs.filter((spec) => spec.type !== "same").length;
+  els.resultContext.innerHTML = `
+    <span class="context-pill"><b>${escapeHtml(category)}</b></span>
+    <span>${count} параметров сопоставлено</span>
+    <span>${differences} отличий найдено</span>`;
+}
+
+function renderProducts(products, category) {
+  const label = categoryLabel(category);
+  els.productGrid.innerHTML = products.map((product) => {
+    const sourceAction = product.url
+      ? `<a class="product-link" href="${escapeAttribute(product.url)}" target="_blank" rel="noreferrer">Открыть товар ↗</a>`
+      : `<span class="product-link disabled">Демо-товар</span>`;
+
+    return `
+      <article class="product-card">
+        <div class="product-topline">
+          <div class="product-store">${escapeHtml(product.store || "Источник")}</div>
+          <span class="category-badge">${escapeHtml(label)}</span>
+        </div>
+        <h3>${escapeHtml(product.name)}</h3>
+        <div class="product-meta">
+          <span class="product-price">${escapeHtml(product.price || "Цена не найдена")}</span>
+          <span class="product-badge">${escapeHtml(product.badge)}</span>
+        </div>
+        <div class="product-actions">${sourceAction}</div>
+      </article>`;
+  }).join("");
+
+  els.tableProductA.textContent = products[0]?.name || "Товар 1";
+  els.tableProductB.textContent = products[1]?.name || "Товар 2";
 }
 
 function renderSummary(summary) {
-  els.summaryCard.innerHTML = `<div class="summary-icon">↗</div><div><h3>Что здесь действительно отличается</h3><p>${escapeHtml(summary)}</p></div>`;
+  els.summaryCard.innerHTML = `
+    <div class="summary-icon">↗</div>
+    <div>
+      <h3>Что здесь действительно отличается</h3>
+      <p>${escapeHtml(summary || "Сравнение готово.")}</p>
+    </div>`;
 }
 
 function renderSpecs() {
   if (!currentData) return;
+
   const visibleSpecs = currentData.specs.filter((spec) => {
     if (activeFilter === "diff") return spec.type !== "same";
     if (activeFilter === "important") return spec.important;
     return true;
   });
 
+  if (!visibleSpecs.length) {
+    els.specBody.innerHTML = `<tr><td colspan="4" class="empty-row">По этому фильтру характеристик нет.</td></tr>`;
+    return;
+  }
+
   els.specBody.innerHTML = visibleSpecs.map((spec) => {
-    const diffClass = spec.type === "win-a" || spec.type === "win-b" ? "win" : spec.type === "warn" ? "warn" : "";
+    const diffClass = spec.type === "win-a" || spec.type === "win-b"
+      ? "win"
+      : spec.type === "warn"
+        ? "warn"
+        : "";
+
     return `<tr>
       <td class="spec-name">${escapeHtml(spec.label)}${spec.important ? '<span class="importance">важно</span>' : ""}</td>
       <td class="spec-value">${escapeHtml(spec.a)}</td>
@@ -87,19 +183,61 @@ function renderSpecs() {
   }).join("");
 }
 
+function renderOffers(products) {
+  const hasAnyOffers = products.some((product) => Array.isArray(product.offers) && product.offers.length);
+  els.offersSection.classList.toggle("hidden", !hasAnyOffers);
+  if (!hasAnyOffers) return;
+
+  els.offersGrid.innerHTML = products.map((product, index) => {
+    const offers = Array.isArray(product.offers) ? product.offers : [];
+    const rows = offers.length
+      ? offers.map(renderOffer).join("")
+      : `<div class="offer-empty">Предложения пока не найдены.</div>`;
+
+    return `
+      <article class="offer-column">
+        <div class="offer-product-head">
+          <span>Товар 0${index + 1}</span>
+          <h4>${escapeHtml(product.name)}</h4>
+        </div>
+        <div class="offer-list">${rows}</div>
+      </article>`;
+  }).join("");
+}
+
+function renderOffer(offer) {
+  const availabilityClass = offer.available === false ? "unavailable" : "";
+  const availability = offer.available === false ? "Нет в наличии" : offer.available === true ? "В наличии" : "Наличие уточняется";
+  const action = offer.url
+    ? `<a class="buy-button" href="${escapeAttribute(offer.url)}" target="_blank" rel="noreferrer">К товару →</a>`
+    : `<span class="buy-button disabled">Демо</span>`;
+
+  return `
+    <div class="offer-row ${availabilityClass}">
+      <div class="offer-store">
+        <strong>${escapeHtml(offer.store || "Магазин")}</strong>
+        <small>${escapeHtml(availability)}</small>
+      </div>
+      <div class="offer-price">${escapeHtml(offer.price || "Цена не найдена")}</div>
+      ${action}
+    </div>`;
+}
+
 function renderComparison(data) {
   currentData = data;
-  renderProducts(data.products);
+  renderContext(data);
+  renderProducts(data.products, data.category);
   renderSummary(data.summary);
   renderSpecs();
+  renderOffers(data.products);
   els.results.classList.remove("hidden");
   requestAnimationFrame(() => els.results.scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
 function runDemo() {
-  els.urlA.value = "https://www.dns-shop.ru/product/.../radeon-rx-580/";
-  els.urlB.value = "https://www.mvideo.ru/products/.../geforce-gtx-1060/";
-  showNote("Демо использует подготовленный набор данных.", "ok");
+  els.urlA.value = "https://магазин-a.ru/product/nova-one-256";
+  els.urlB.value = "https://магазин-b.ru/product/orbit-pro-256";
+  showNote("Демо показывает универсальный интерфейс Specly на примере смартфонов.", "ok");
   renderComparison(demoData);
 }
 
@@ -115,7 +253,7 @@ async function compareEnteredUrls() {
   }
 
   setLoading(true);
-  showNote(`Получаю характеристики с ${hostLabel(a)} и ${hostLabel(b)} через российский Parser API…`);
+  showNote(`Определяю товары и получаю данные с ${hostLabel(a)} и ${hostLabel(b)}…`);
 
   try {
     const response = await fetch(API_ENDPOINT, {
@@ -128,7 +266,7 @@ async function compareEnteredUrls() {
     if (!response.ok) throw payload.error || { message: `API вернул HTTP ${response.status}` };
 
     renderComparison(mapApiResponse(payload));
-    showNote("Характеристики получены через Yandex Cloud и нормализованы.", "ok");
+    showNote("Товары распознаны, доступные характеристики сопоставлены.", "ok");
   } catch (error) {
     const candidates = error?.details?.candidates;
     const host = error?.details?.host;
@@ -136,35 +274,73 @@ async function compareEnteredUrls() {
     const suffix = Array.isArray(candidates) && candidates.length
       ? ` Найдено товаров: ${candidates.map((item) => item.title).join("; ")}. Вставь ссылку конкретного товара.`
       : "";
-    showNote(`${hostPrefix}${error?.message || "Не удалось получить характеристики."}${suffix}`, "error");
+    showNote(`${hostPrefix}${error?.message || "Не удалось получить данные о товарах."}${suffix}`, "error");
   } finally {
     setLoading(false);
   }
 }
 
 function mapApiResponse(payload) {
-  return {
-    products: payload.products.map((product, index) => ({
-      store: product.store || product.source,
-      name: product.title,
+  const products = (payload.products || []).map((product, index) => {
+    const ownOffer = product.url
+      ? [{
+          store: product.store || product.source || hostLabel(product.url),
+          price: formatPrice(product.price),
+          available: product.available ?? null,
+          url: product.url
+        }]
+      : [];
+
+    const offers = Array.isArray(product.offers) && product.offers.length
+      ? product.offers.map((offer) => ({
+          store: offer.store || offer.source || "Магазин",
+          price: formatPrice(offer.price),
+          available: offer.available ?? null,
+          url: offer.url || null
+        }))
+      : ownOffer;
+
+    return {
+      store: product.store || product.source || "Источник",
+      name: product.title || product.name || `Товар ${index + 1}`,
       price: formatPrice(product.price),
       badge: `Товар 0${index + 1}`,
-      url: product.url
-    })),
+      url: product.url || null,
+      image: product.image || null,
+      offers
+    };
+  });
+
+  return {
+    category: payload.category || "generic",
+    products,
     summary: payload.summary || "Сравнение готово.",
-    specs: payload.comparison.map((row) => ({
+    specs: (payload.comparison || []).map((row) => ({
       key: row.key,
       label: row.label,
-      a: row.displayValues[0],
-      b: row.displayValues[1],
-      diff: row.note,
-      important: row.important,
-      type: !row.different ? "same" : row.winner === 0 ? "win-a" : row.winner === 1 ? "win-b" : row.preference === "context" ? "warn" : "neutral"
+      a: row.displayValues?.[0] ?? displayFallback(row.values?.[0]),
+      b: row.displayValues?.[1] ?? displayFallback(row.values?.[1]),
+      diff: row.note || (row.different ? "Значения отличаются" : "Одинаково"),
+      important: Boolean(row.important),
+      type: !row.different
+        ? "same"
+        : row.winner === 0
+          ? "win-a"
+          : row.winner === 1
+            ? "win-b"
+            : row.preference === "context"
+              ? "warn"
+              : "neutral"
     }))
   };
 }
 
+function displayFallback(value) {
+  return value === null || value === undefined || value === "" ? "—" : String(value);
+}
+
 function formatPrice(price) {
+  if (typeof price === "string") return price;
   if (!price || price.value == null) return "Цена не найдена";
   try {
     return new Intl.NumberFormat("ru-RU", {
@@ -179,16 +355,20 @@ function formatPrice(price) {
 
 function setLoading(loading) {
   els.compareButton.disabled = loading;
-  els.compareButton.textContent = loading ? "Сравниваю…" : "Сравнить";
+  els.compareButton.innerHTML = loading ? "Сравниваю…" : "Сравнить товары <span>→</span>";
 }
 
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
 els.compareButton.addEventListener("click", compareEnteredUrls);
