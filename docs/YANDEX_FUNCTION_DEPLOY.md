@@ -17,7 +17,7 @@ zip -r specly-yandex-function.zip \
 On PowerShell, if `zip` is unavailable:
 
 ```powershell
-Compress-Archive -Path yandex-function.js,package.json,server/src -DestinationPath specly-yandex-function.zip -Force
+Compress-Archive -Path yandex-function.js,package.json,server -DestinationPath specly-yandex-function.zip -Force
 ```
 
 The ZIP root must contain `yandex-function.js`, `package.json`, and the `server/` directory directly. Do not wrap them in an extra `Specly-main/` folder.
