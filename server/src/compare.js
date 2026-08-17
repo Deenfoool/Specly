@@ -13,9 +13,9 @@ export async function compareUrls(urls) {
     throw error;
   }
 
-  const products = await Promise.all(urls.map(parseProduct));
-  const mixed = products[0].category !== products[1].category;
-  const comparison = buildUniversalComparison(products[0], products[1]);
+  const parsedProducts = await Promise.all(urls.map(parseProduct));
+  const mixed = parsedProducts[0].category !== parsedProducts[1].category;
+  const comparison = buildUniversalComparison(parsedProducts[0], parsedProducts[1]);
 
   if (!comparison.length && !mixed) {
     const error = new Error('Не удалось извлечь сопоставимые характеристики');
@@ -23,14 +23,31 @@ export async function compareUrls(urls) {
     throw error;
   }
 
-  const category = mixed ? 'mixed' : (products[0].category || 'generic');
+  const category = mixed ? 'mixed' : (parsedProducts[0].category || 'generic');
 
   return {
     category,
-    categories: products.map((product) => product.category || 'generic'),
+    categories: parsedProducts.map((product) => product.category || 'generic'),
     mixedCategories: mixed,
-    products,
+    products: parsedProducts.map(toPublicProduct),
     comparison,
     summary: buildUniversalSummary(comparison, { mixed })
+  };
+}
+
+function toPublicProduct(product) {
+  return {
+    store: product.store,
+    source: product.source,
+    url: product.url,
+    title: product.title,
+    image: product.image,
+    price: product.price,
+    available: product.available ?? null,
+    category: product.category || 'generic',
+    categoryConfidence: product.categoryConfidence ?? 0,
+    identity: product.identity || null,
+    specs: product.specs || {},
+    offers: Array.isArray(product.offers) ? product.offers : []
   };
 }
