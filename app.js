@@ -70,7 +70,7 @@ const els = {
   offersGrid: document.querySelector("#offersGrid")
 };
 
-const YANDEX_API_ENDPOINT = "https://functions.yandexcloud.net/d4e8s55p90sv6i1lj2ii";
+const YANDEX_API_ENDPOINT = "https://functions.yandexcloud.net/d4ea624dbpvf3irs1iev";
 const queryApi = new URLSearchParams(location.search).get("api");
 const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const API_ENDPOINT = queryApi
