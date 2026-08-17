@@ -37,18 +37,44 @@ export function toCharacteristicsUrl(value) {
   return url.href;
 }
 
-export function extractProductCandidates(html, origin = 'https://www.dns-shop.ru') {
+export function extractProductCandidates(content, origin = 'https://www.dns-shop.ru') {
   const results = [];
   const seen = new Set();
-  const re = /<a\b[^>]*href=["']([^"']*\/product\/(?!characteristics\/)[^"'#?]+\/)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let match;
-  while ((match = re.exec(html)) && results.length < 6) {
-    const href = new URL(match[1], origin).href;
-    if (seen.has(href)) continue;
-    const title = match[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    if (!/видеокарт/i.test(title)) continue;
+
+  const add = (hrefValue, titleValue) => {
+    if (results.length >= 6) return;
+    let href;
+    try { href = new URL(hrefValue, origin).href; }
+    catch { return; }
+    if (!/\/product\/(?!characteristics\/)/i.test(href) || seen.has(href)) return;
+
+    const title = String(titleValue || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!/видеокарт/i.test(title)) return;
+
     seen.add(href);
     results.push({ title, url: href });
+  };
+
+  const htmlRe = /<a\b[^>]*href=["']([^"']*\/product\/(?!characteristics\/)[^"'#?]+\/)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+  while ((match = htmlRe.exec(content)) && results.length < 6) add(match[1], match[2]);
+
+  // Jina Reader и похожие reader-сервисы возвращают Markdown-ссылки.
+  const markdownRe = /\[([^\]]*видеокарт[^\]]*)\]\((https?:\/\/[^\s)]+\/product\/(?!characteristics\/)[^\s)#?]+\/?[^\s)]*)\)/gi;
+  while ((match = markdownRe.exec(content)) && results.length < 6) add(match[2], match[1]);
+
+  // Некоторые reader-ответы выводят URL отдельной строкой рядом с названием.
+  const lines = String(content).split(/\r?\n/);
+  for (let i = 0; i < lines.length && results.length < 6; i += 1) {
+    const urlMatch = lines[i].match(/https?:\/\/[^\s)]+\/product\/(?!characteristics\/)[^\s)#?]+\/?/i);
+    if (!urlMatch) continue;
+    const nearby = [lines[i - 2], lines[i - 1], lines[i], lines[i + 1], lines[i + 2]].filter(Boolean).join(' ');
+    add(urlMatch[0], nearby);
   }
+
   return results;
 }
