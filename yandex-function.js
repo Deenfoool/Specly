@@ -1,5 +1,6 @@
 import { compareUrls } from './server/src/compare.js';
 import { FetchError } from './server/src/fetchPage.js';
+import { getYandexMarketConfigStatus } from './server/src/offers/yandexMarket.js';
 
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',
@@ -18,7 +19,7 @@ export const handler = async (event = {}) => {
     return response(200, {
       ok: true,
       service: 'specly-parser-yandex',
-      version: '0.3.0-universal',
+      version: '0.3.4-market-auth-key',
       stores: [
         'dns-shop.ru',
         'mvideo.ru',
@@ -30,7 +31,10 @@ export const handler = async (event = {}) => {
         'vseinstrumenti.ru',
         'eldorado.ru',
         'aliexpress.ru'
-      ]
+      ],
+      offerProviders: {
+        yandexMarketAffiliate: getYandexMarketConfigStatus()
+      }
     });
   }
 
@@ -47,7 +51,7 @@ export const handler = async (event = {}) => {
     return response(status, {
       error: {
         code: error.code || 'INTERNAL_ERROR',
-        message: status >= 500 ? safeServerMessage(error) : error.message,
+        message: publicMessage(error, status),
         ...(error.details ? { details: error.details } : {})
       }
     });
@@ -83,12 +87,14 @@ function statusFor(error) {
     if (['INVALID_URL', 'UNSUPPORTED_PROTOCOL', 'UNSUPPORTED_STORE'].includes(error.code)) return 400;
     return 502;
   }
-  if (['INVALID_REQUEST', 'SAME_URLS', 'DNS_CATALOG_URL', 'PAYLOAD_TOO_LARGE', 'INVALID_JSON'].includes(error.code)) return 400;
+  if (['INVALID_REQUEST', 'SAME_URLS', 'DNS_CATALOG_URL', 'PAYLOAD_TOO_LARGE', 'INVALID_JSON', 'YANDEX_MARKET_API_NOT_CONFIGURED'].includes(error.code)) return 400;
   if (error.code === 'PRODUCT_PARSE_FAILED') return 422;
+  if (error.code === 'YANDEX_MARKET_API_ERROR') return 502;
   return 500;
 }
 
-function safeServerMessage(error) {
-  if (error instanceof FetchError || error.code === 'PRODUCT_PARSE_FAILED') return error.message;
-  return 'Внутренняя ошибка парсера';
+function publicMessage(error, status) {
+  if (error instanceof FetchError) return error.message;
+  if (['PRODUCT_PARSE_FAILED', 'YANDEX_MARKET_API_NOT_CONFIGURED', 'YANDEX_MARKET_API_ERROR'].includes(error.code)) return error.message;
+  return status >= 500 ? 'Внутренняя ошибка парсера' : error.message;
 }
