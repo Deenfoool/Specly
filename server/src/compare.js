@@ -1,5 +1,5 @@
 import { parseProduct } from './adapters/index.js';
-import { buildComparison, buildSummary } from './normalizer.js';
+import { buildUniversalComparison, buildUniversalSummary } from './universalNormalizer.js';
 
 export async function compareUrls(urls) {
   if (!Array.isArray(urls) || urls.length !== 2) {
@@ -14,18 +14,23 @@ export async function compareUrls(urls) {
   }
 
   const products = await Promise.all(urls.map(parseProduct));
-  const comparison = buildComparison(products[0], products[1]);
+  const mixed = products[0].category !== products[1].category;
+  const comparison = buildUniversalComparison(products[0], products[1]);
 
-  if (!comparison.length) {
+  if (!comparison.length && !mixed) {
     const error = new Error('Не удалось извлечь сопоставимые характеристики');
     error.code = 'PRODUCT_PARSE_FAILED';
     throw error;
   }
 
+  const category = mixed ? 'mixed' : (products[0].category || 'generic');
+
   return {
-    category: 'gpu',
+    category,
+    categories: products.map((product) => product.category || 'generic'),
+    mixedCategories: mixed,
     products,
     comparison,
-    summary: buildSummary(comparison)
+    summary: buildUniversalSummary(comparison, { mixed })
   };
 }
