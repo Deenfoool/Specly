@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Specly — сравнение характеристик товаров по ссылкам из разных магазинов." />
+  <meta name="theme-color" content="#0b0d10" />
+  <title>Specly — сравнивай товары, а не вкладки</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Specly">
+      <span class="brand-mark">S</span>
+      <span>Specly</span>
+    </a>
+    <nav class="header-nav" aria-label="Навигация">
+      <a href="#compare">Сравнение</a>
+      <a href="#how">Как работает</a>
+      <a href="https://github.com/Deenfoool/Specly" target="_blank" rel="noreferrer">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="eyebrow"><span></span> Сравнение без ручной сверки</div>
+      <h1>Сравнивай товары,<br /><em>а не вкладки.</em></h1>
+      <p class="hero-copy">Вставь ссылки на товары из разных магазинов. Specly сведёт характеристики к единому виду, выделит отличия и поможет понять, что действительно важно.</p>
+
+      <div class="compare-card" id="compare">
+        <div class="url-row">
+          <span class="url-index">01</span>
+          <input id="urlA" type="url" inputmode="url" placeholder="https://www.dns-shop.ru/..." aria-label="Ссылка на первый товар" />
+        </div>
+        <div class="url-row">
+          <span class="url-index">02</span>
+          <input id="urlB" type="url" inputmode="url" placeholder="https://www.mvideo.ru/..." aria-label="Ссылка на второй товар" />
+        </div>
+        <div class="compare-actions">
+          <button class="primary-button" id="compareButton" type="button">Сравнить товары <span>→</span></button>
+          <button class="ghost-button" id="demoButton" type="button">Показать демо</button>
+        </div>
+        <p class="form-note" id="formNote">На первом этапе поддерживаем сравнение видеокарт. Архитектура готовится под другие категории.</p>
+      </div>
+
+      <div class="store-strip" aria-label="Планируемые магазины">
+        <span>DNS</span><i>×</i><span>М.Видео</span><i>×</i><span>Ozon</span><i>×</i><span>Яндекс Маркет</span>
+      </div>
+    </section>
+
+    <section class="results hidden" id="results" aria-live="polite">
+      <div class="section-heading">
+        <div>
+          <span class="kicker">Результат сравнения</span>
+          <h2>Главные отличия</h2>
+        </div>
+        <div class="filters" role="group" aria-label="Фильтр характеристик">
+          <button class="filter active" data-filter="all" type="button">Все</button>
+          <button class="filter" data-filter="diff" type="button">Только отличия</button>
+          <button class="filter" data-filter="important" type="button">Важные</button>
+        </div>
+      </div>
+
+      <div class="product-grid" id="productGrid"></div>
+
+      <div class="summary-card" id="summaryCard"></div>
+
+      <div class="spec-table-wrap">
+        <table class="spec-table">
+          <thead>
+            <tr>
+              <th>Характеристика</th>
+              <th id="tableProductA">Товар 1</th>
+              <th id="tableProductB">Товар 2</th>
+              <th>Разница</th>
+            </tr>
+          </thead>
+          <tbody id="specBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="how" id="how">
+      <div class="section-heading">
+        <div>
+          <span class="kicker">Как это работает</span>
+          <h2>От ссылки до понятного выбора</h2>
+        </div>
+      </div>
+      <div class="steps">
+        <article><span>01</span><h3>Получаем данные</h3><p>Specly извлекает название, цену и характеристики со страниц магазинов.</p></article>
+        <article><span>02</span><h3>Нормализуем</h3><p>«8192 МБ», «8 GB» и «8 ГБ» превращаются в одно сравнимое значение.</p></article>
+        <article><span>03</span><h3>Сопоставляем</h3><p>Разные названия вроде «Шина памяти» и «Memory Bus» становятся одним параметром.</p></article>
+        <article><span>04</span><h3>Показываем смысл</h3><p>Вместо стены характеристик — отличия, важность параметров и краткий вывод.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand" href="#top"><span class="brand-mark">S</span><span>Specly</span></a>
+    <p>Сделано для тех, кто устал сравнивать характеристики вручную.</p>
+    <a href="https://github.com/Deenfoool/Specly" target="_blank" rel="noreferrer">Исходный код ↗</a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
