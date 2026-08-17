@@ -4,21 +4,42 @@ import { buildProductIdentity } from '../identity.js';
 const API_URL = 'https://api.content.market.yandex.ru/v3/affiliate/partner/link/create';
 const TIMEOUT_MS = 8_000;
 
+export function getYandexMarketConfigStatus() {
+  const authKey = getAuthKey();
+  const placeIdRaw = String(process.env.YANDEX_MARKET_PLACE_ID || '').trim();
+  const clidRaw = String(process.env.YANDEX_MARKET_CLID || '').trim();
+  const placeId = numericId(placeIdRaw);
+  const clid = numericId(clidRaw);
+
+  return {
+    configured: Boolean(authKey && (placeId || clid)),
+    authKey: Boolean(authKey),
+    authKeyVariable: process.env.YANDEX_MARKET_AUTH_KEY
+      ? 'YANDEX_MARKET_AUTH_KEY'
+      : process.env.YANDEX_MARKET_AFFILIATE_TOKEN
+        ? 'YANDEX_MARKET_AFFILIATE_TOKEN'
+        : null,
+    placeId: Boolean(placeIdRaw),
+    placeIdValid: Boolean(placeId),
+    clid: Boolean(clidRaw),
+    clidValid: Boolean(clid)
+  };
+}
+
 export function yandexMarketConfigured() {
-  return Boolean(
-    process.env.YANDEX_MARKET_AFFILIATE_TOKEN
-    && (process.env.YANDEX_MARKET_PLACE_ID || process.env.YANDEX_MARKET_CLID)
-  );
+  return getYandexMarketConfigStatus().configured;
 }
 
 export async function resolveYandexMarketProduct(url) {
   if (!yandexMarketConfigured()) {
-    const error = new Error('Для Яндекс Маркета нужен официальный Referral API. Добавь YANDEX_MARKET_AFFILIATE_TOKEN и YANDEX_MARKET_PLACE_ID (или YANDEX_MARKET_CLID) в переменные окружения Yandex Cloud Function.');
+    const status = getYandexMarketConfigStatus();
+    const error = new Error('Для Яндекс Маркета нужен ключ Referral API и числовой YANDEX_MARKET_PLACE_ID (или YANDEX_MARKET_CLID). Ключ вида y0__... укажи в YANDEX_MARKET_AUTH_KEY.');
     error.code = 'YANDEX_MARKET_API_NOT_CONFIGURED';
     error.details = {
       host: 'market.yandex.ru',
+      config: status,
       requiredEnv: [
-        'YANDEX_MARKET_AFFILIATE_TOKEN',
+        'YANDEX_MARKET_AUTH_KEY',
         'YANDEX_MARKET_PLACE_ID или YANDEX_MARKET_CLID'
       ]
     };
@@ -61,20 +82,17 @@ async function requestYandexMarketOffer(url, fallback = {}, { strict = false } =
   requestUrl.searchParams.set('url', url);
   requestUrl.searchParams.set('format', 'json');
 
-  if (process.env.YANDEX_MARKET_PLACE_ID) {
-    requestUrl.searchParams.set('place_id', process.env.YANDEX_MARKET_PLACE_ID);
-  } else {
-    requestUrl.searchParams.set('clid', process.env.YANDEX_MARKET_CLID);
-  }
+  const placeId = numericId(process.env.YANDEX_MARKET_PLACE_ID);
+  const clid = numericId(process.env.YANDEX_MARKET_CLID);
+  if (placeId) requestUrl.searchParams.set('place_id', placeId);
+  else if (clid) requestUrl.searchParams.set('clid', clid);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const token = process.env.YANDEX_MARKET_AFFILIATE_TOKEN.trim();
-    const authorization = /^(OAuth|Bearer)\s/i.test(token) ? token : `OAuth ${token}`;
     const response = await fetch(requestUrl, {
       headers: {
-        Authorization: authorization,
+        Authorization: authorizationHeader(getAuthKey()),
         Accept: 'application/json'
       },
       signal: controller.signal
@@ -83,7 +101,8 @@ async function requestYandexMarketOffer(url, fallback = {}, { strict = false } =
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || (payload?.status && payload.status !== 'OK')) {
       if (!strict) return null;
-      const error = new Error(`Яндекс Маркет API не смог получить товар${response.status ? ` (HTTP ${response.status})` : ''}`);
+      const apiMessage = payload?.message || payload?.error || payload?.errors?.[0]?.message || null;
+      const error = new Error(`Яндекс Маркет Referral API вернул HTTP ${response.status}${apiMessage ? `: ${apiMessage}` : ''}`);
       error.code = 'YANDEX_MARKET_API_ERROR';
       error.details = { host: 'market.yandex.ru', status: response.status };
       throw error;
@@ -93,7 +112,7 @@ async function requestYandexMarketOffer(url, fallback = {}, { strict = false } =
     const price = numberValue(payload?.price);
     if (!link?.url && !link?.title && price === null) {
       if (!strict) return null;
-      const error = new Error('Яндекс Маркет API не вернул данные о товаре');
+      const error = new Error('Яндекс Маркет Referral API не вернул данные о товаре');
       error.code = 'YANDEX_MARKET_API_ERROR';
       error.details = { host: 'market.yandex.ru' };
       throw error;
@@ -123,6 +142,24 @@ async function requestYandexMarketOffer(url, fallback = {}, { strict = false } =
   } finally {
     clearTimeout(timer);
   }
+}
+
+function getAuthKey() {
+  return String(
+    process.env.YANDEX_MARKET_AUTH_KEY
+    || process.env.YANDEX_MARKET_AFFILIATE_TOKEN
+    || ''
+  ).trim();
+}
+
+function authorizationHeader(value) {
+  const key = String(value || '').trim().replace(/^(?:OAuth|Bearer)\s+/i, '');
+  return `OAuth ${key}`;
+}
+
+function numericId(value) {
+  const id = String(value || '').trim();
+  return /^\d+$/.test(id) ? id : null;
 }
 
 function isYandexMarketUrl(value) {
