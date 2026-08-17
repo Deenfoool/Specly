@@ -18,22 +18,27 @@ export async function compareUrls(urls) {
   const products = await Promise.all(parsedProducts.map(enrichProductOffers));
   const mixed = products[0].category !== products[1].category;
   const comparison = buildUniversalComparison(products[0], products[1]);
+  const partial = products.some((product) => product.specsStatus === 'external-source-required');
 
-  if (!comparison.length && !mixed) {
+  if (!comparison.length && !mixed && !partial) {
     const error = new Error('Не удалось извлечь сопоставимые характеристики');
     error.code = 'PRODUCT_PARSE_FAILED';
     throw error;
   }
 
   const category = mixed ? 'mixed' : (products[0].category || 'generic');
+  const summary = comparison.length
+    ? buildUniversalSummary(comparison, { mixed })
+    : 'Товары распознаны, но для одной из карточек характеристики недоступны через официальный API. Цена, наличие и ссылка уже получены; характеристики будут дополнены из браузерного или другого доверенного источника.';
 
   return {
     category,
     categories: products.map((product) => product.category || 'generic'),
     mixedCategories: mixed,
+    partialComparison: partial || !comparison.length,
     products: products.map(toPublicProduct),
     comparison,
-    summary: buildUniversalSummary(comparison, { mixed }),
+    summary,
     offerProviders: getOfferProviderStatus()
   };
 }
@@ -51,6 +56,8 @@ function toPublicProduct(product) {
     categoryConfidence: product.categoryConfidence ?? 0,
     identity: product.identity || null,
     specs: product.specs || {},
+    specsStatus: product.specsStatus || 'available',
+    resolvedBy: product.resolvedBy || null,
     offers: Array.isArray(product.offers) ? product.offers : []
   };
 }
