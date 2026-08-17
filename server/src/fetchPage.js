@@ -6,7 +6,15 @@ const READER_FALLBACK_STATUSES = new Set([401, 403, 429]);
 
 const SUPPORTED_HOSTS = new Set([
   'dns-shop.ru', 'www.dns-shop.ru',
-  'mvideo.ru', 'www.mvideo.ru'
+  'mvideo.ru', 'www.mvideo.ru',
+  'ozon.ru', 'www.ozon.ru',
+  'market.yandex.ru',
+  'wildberries.ru', 'www.wildberries.ru',
+  'citilink.ru', 'www.citilink.ru',
+  'megamarket.ru', 'www.megamarket.ru',
+  'vseinstrumenti.ru', 'www.vseinstrumenti.ru',
+  'eldorado.ru', 'www.eldorado.ru',
+  'aliexpress.ru', 'www.aliexpress.ru'
 ]);
 
 export class FetchError extends Error {
@@ -43,16 +51,14 @@ async function fetchHtmlWithRedirects(url, depth) {
     response = await request(url, TIMEOUT_MS, {
       redirect: 'manual',
       headers: {
-        'user-agent': 'Mozilla/5.0 (compatible; Specly/0.2; +https://github.com/Deenfoool/Specly)',
+        'user-agent': 'Mozilla/5.0 (compatible; Specly/0.3; +https://github.com/Deenfoool/Specly)',
         'accept': 'text/html,application/xhtml+xml',
         'accept-language': 'ru-RU,ru;q=0.9,en;q=0.6',
         'cache-control': 'no-cache'
       }
     });
   } catch (error) {
-    if (error?.name === 'AbortError') {
-      return fetchViaReader(url, { directError: 'timeout' });
-    }
+    if (error?.name === 'AbortError') return fetchViaReader(url, { directError: 'timeout' });
     return fetchViaReader(url, { directError: 'network' });
   }
 
@@ -65,14 +71,12 @@ async function fetchHtmlWithRedirects(url, depth) {
   }
 
   if (!response.ok) {
-    if (READER_FALLBACK_STATUSES.has(response.status)) {
-      return fetchViaReader(url, { directStatus: response.status });
-    }
-    throw new FetchError(
-      'UPSTREAM_HTTP_ERROR',
-      `Магазин вернул HTTP ${response.status}`,
-      { status: response.status, host: url.hostname, url: url.href }
-    );
+    if (READER_FALLBACK_STATUSES.has(response.status)) return fetchViaReader(url, { directStatus: response.status });
+    throw new FetchError('UPSTREAM_HTTP_ERROR', `Магазин вернул HTTP ${response.status}`, {
+      status: response.status,
+      host: url.hostname,
+      url: url.href
+    });
   }
 
   const contentType = response.headers.get('content-type') ?? '';
@@ -92,17 +96,13 @@ async function fetchHtmlWithRedirects(url, depth) {
 }
 
 async function fetchViaReader(url, directDetails = {}) {
-  // Jina Reader работает только с публично доступными URL и здесь используется
-  // как резервный способ чтения страницы, если магазин режет дата-центровый IP Vercel.
   const readerUrl = `https://r.jina.ai/${url.href}`;
   const headers = {
     'accept': 'text/plain, text/markdown;q=0.9, */*;q=0.5',
-    'user-agent': 'Specly/0.2 (+https://github.com/Deenfoool/Specly)'
+    'user-agent': 'Specly/0.3 (+https://github.com/Deenfoool/Specly)'
   };
 
-  if (process.env.JINA_API_KEY) {
-    headers.authorization = `Bearer ${process.env.JINA_API_KEY}`;
-  }
+  if (process.env.JINA_API_KEY) headers.authorization = `Bearer ${process.env.JINA_API_KEY}`;
 
   let response;
   try {
@@ -151,9 +151,7 @@ async function readLimitedText(response, maxBytes, tooLargeMessage) {
   const reader = response.body?.getReader();
   if (!reader) {
     const text = await response.text();
-    if (new TextEncoder().encode(text).byteLength > maxBytes) {
-      throw new FetchError('PAGE_TOO_LARGE', tooLargeMessage);
-    }
+    if (new TextEncoder().encode(text).byteLength > maxBytes) throw new FetchError('PAGE_TOO_LARGE', tooLargeMessage);
     return text;
   }
 
