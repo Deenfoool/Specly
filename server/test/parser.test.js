@@ -5,6 +5,7 @@ import { normalizeGpuSpecs, buildComparison } from '../src/normalizer.js';
 import { detectCategory } from '../src/category.js';
 import { normalizeProductSpecs, buildUniversalComparison } from '../src/universalNormalizer.js';
 import { toCharacteristicsUrl, extractProductCandidates } from '../src/adapters/dns.js';
+import { signTopRequest } from '../src/offers/aliexpress.js';
 
 const mvideoFixture = `
 <html><body><h1>Видеокарта MSI GeForce GTX 1060 6GT OCV1</h1>
@@ -93,6 +94,19 @@ test('mixed categories compare only shared fields', () => {
   );
   assert.ok(rows.every((row) => phone.specs[row.key] !== undefined && laptop.specs[row.key] !== undefined));
   assert.ok(rows.some((row) => row.key === 'weight_g'));
+});
+
+test('signs AliExpress TOP requests with sorted HMAC-MD5 parameters', () => {
+  const signature = signTopRequest({
+    method: 'aliexpress.affiliate.product.query',
+    app_key: '123',
+    format: 'json',
+    sign_method: 'hmac',
+    timestamp: '2026-08-17 12:00:00',
+    v: '2.0',
+    keywords: 'test'
+  }, 'secret');
+  assert.equal(signature, '2396D93147727EA3B8AE7279CECD822E');
 });
 
 test('converts DNS product URL to characteristics URL', () => {
