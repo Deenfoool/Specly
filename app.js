@@ -24,7 +24,7 @@ const els = {
 };
 
 const queryApi = new URLSearchParams(location.search).get("api");
-const API_BASE = (queryApi || (location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:8787" : "")).replace(/\/$/, "");
+const API_BASE = (queryApi || (location.hostname === "localhost" || location.hostname === "127.0.0.1" ? "http://localhost:8787" : location.origin)).replace(/\/$/, "");
 let activeFilter = "all";
 let currentData = null;
 
@@ -77,7 +77,6 @@ async function compareEnteredUrls() {
   const a = els.urlA.value.trim(); const b = els.urlB.value.trim();
   if (!isValidUrl(a) || !isValidUrl(b)) return showNote("Вставь две полные ссылки, начинающиеся с http:// или https://.", "error");
   if (a === b) return showNote("Ссылки одинаковые — для сравнения нужны два разных товара.", "error");
-  if (!API_BASE) return showNote("Парсер уже есть в репозитории, но сервер API ещё не опубликован. Для локальной проверки открой сайт с ?api=http://localhost:8787.", "error");
 
   setLoading(true);
   showNote(`Получаю характеристики с ${hostLabel(a)} и ${hostLabel(b)}…`);
