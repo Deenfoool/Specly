@@ -1,15 +1,13 @@
 # Specly Parser API
 
-Этот документ фиксирует минимальный контракт между статическим фронтендом Specly и будущим серверным парсером.
-
 ## POST /api/compare
 
-Запрос:
+Запрос содержит ровно две HTTPS-ссылки на поддерживаемые магазины.
 
 ```json
 {
   "urls": [
-    "https://www.dns-shop.ru/product/...",
+    "https://www.dns-shop.ru/product/.../",
     "https://www.mvideo.ru/products/..."
   ]
 }
@@ -22,20 +20,17 @@
   "category": "gpu",
   "products": [
     {
+      "store": "DNS",
       "source": "dns-shop.ru",
-      "url": "https://www.dns-shop.ru/product/...",
+      "url": "https://www.dns-shop.ru/product/.../",
       "title": "Видеокарта ...",
-      "price": {
-        "value": 12999,
-        "currency": "RUB"
-      },
+      "price": { "value": 12999, "currency": "RUB" },
       "image": "https://...",
       "specs": {
         "gpu": "Radeon RX 580",
         "video_memory_gb": 8,
         "memory_type": "GDDR5",
-        "memory_bus_bit": 256,
-        "tdp_w": 185
+        "memory_bus_bit": 256
       }
     }
   ],
@@ -48,79 +43,50 @@
       "different": true,
       "important": true,
       "preference": "higher",
-      "note": "Первый товар: +2 ГБ"
+      "winner": 0,
+      "note": "Первый товар предпочтительнее по этому параметру; разница 2 ГБ"
     }
-  ]
+  ],
+  "summary": "..."
 }
 ```
 
-## Нормализованные ключи GPU
-
-Рекомендуемый минимальный словарь:
-
-```text
-gpu
-video_memory_gb
-memory_type
-memory_bus_bit
-core_clock_mhz
-boost_clock_mhz
-tdp_w
-power_connector
-recommended_psu_w
-pcie
-length_mm
-width_mm
-height_mm
-hdmi_count
-displayport_count
-```
-
-## Правила сравнения
-
-Каждый параметр имеет тип предпочтения:
-
-- `higher` — больше обычно лучше;
-- `lower` — меньше обычно лучше;
-- `neutral` — числовое сравнение не определяет победителя;
-- `context` — оценка зависит от сценария.
-
-Примеры:
+## GET /api/health
 
 ```json
-{
-  "video_memory_gb": "higher",
-  "tdp_w": "lower",
-  "length_mm": "context",
-  "memory_type": "context"
-}
+{ "ok": true, "service": "specly-parser", "version": "0.1.0" }
 ```
 
-Важно: Specly не должен автоматически объявлять товар победителем только потому, что у него больше «выигранных» строк.
+## Нормализованные GPU-ключи
+
+`gpu`, `video_memory_gb`, `memory_type`, `memory_bus_bit`, `core_clock_mhz`, `memory_clock_mhz`, `tdp_w`, `power_connector`, `recommended_psu_w`, `pcie`, `length_mm`, `width_mm`, `height_mm`, `hdmi_count`, `displayport_count`.
 
 ## Стратегия извлечения
 
-Для каждого магазина адаптер должен пробовать источники в таком порядке:
+1. JSON-LD и meta-теги для карточки товара;
+2. видимый HTML для характеристик;
+3. нормализация русских названий и единиц;
+4. DNS дополнительно пробует отдельный URL `/product/characteristics/...`;
+5. отсутствующие параметры остаются отсутствующими — Specly не додумывает значения.
 
-1. JSON-LD / schema.org;
-2. структурированные данные, встроенные в страницу;
-3. доступные публичные данные страницы;
-4. DOM-парсинг как fallback.
+## DNS catalog URL
 
-Нормализация выполняется после извлечения, поэтому адаптер магазина не должен содержать логику пользовательского сравнения.
-
-## Ошибки
-
-Пример ответа, если страницу нельзя разобрать:
+`/catalog/recipe/...` — это выдача, а не карточка товара. Ответ:
 
 ```json
 {
   "error": {
-    "code": "PRODUCT_PARSE_FAILED",
-    "message": "Не удалось получить характеристики товара",
-    "source": "dns-shop.ru"
+    "code": "DNS_CATALOG_URL",
+    "message": "Ссылка DNS ведёт на каталог, а не на конкретный товар",
+    "details": {
+      "candidates": [
+        { "title": "Видеокарта ...", "url": "https://www.dns-shop.ru/product/.../" }
+      ]
+    }
   }
 }
 ```
 
-Фронтенд должен показывать такую ошибку пользователю, а не заменять отсутствующие данные догадками.
+## Безопасность
+
+Parser API не является открытым универсальным URL-прокси. Разрешены только HTTPS-хосты DNS и М.Видео; каждый redirect повторно проходит whitelist-проверку. Размер HTML и время ответа upstream ограничены.
