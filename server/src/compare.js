@@ -1,5 +1,6 @@
 import { parseProduct } from './adapters/index.js';
 import { buildUniversalComparison, buildUniversalSummary } from './universalNormalizer.js';
+import { enrichProductOffers, getOfferProviderStatus } from './offers/index.js';
 
 export async function compareUrls(urls) {
   if (!Array.isArray(urls) || urls.length !== 2) {
@@ -14,8 +15,9 @@ export async function compareUrls(urls) {
   }
 
   const parsedProducts = await Promise.all(urls.map(parseProduct));
-  const mixed = parsedProducts[0].category !== parsedProducts[1].category;
-  const comparison = buildUniversalComparison(parsedProducts[0], parsedProducts[1]);
+  const products = await Promise.all(parsedProducts.map(enrichProductOffers));
+  const mixed = products[0].category !== products[1].category;
+  const comparison = buildUniversalComparison(products[0], products[1]);
 
   if (!comparison.length && !mixed) {
     const error = new Error('Не удалось извлечь сопоставимые характеристики');
@@ -23,15 +25,16 @@ export async function compareUrls(urls) {
     throw error;
   }
 
-  const category = mixed ? 'mixed' : (parsedProducts[0].category || 'generic');
+  const category = mixed ? 'mixed' : (products[0].category || 'generic');
 
   return {
     category,
-    categories: parsedProducts.map((product) => product.category || 'generic'),
+    categories: products.map((product) => product.category || 'generic'),
     mixedCategories: mixed,
-    products: parsedProducts.map(toPublicProduct),
+    products: products.map(toPublicProduct),
     comparison,
-    summary: buildUniversalSummary(comparison, { mixed })
+    summary: buildUniversalSummary(comparison, { mixed }),
+    offerProviders: getOfferProviderStatus()
   };
 }
 
