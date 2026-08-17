@@ -90,8 +90,12 @@ async function compareEnteredUrls() {
     showNote("Характеристики получены и нормализованы.", "ok");
   } catch (error) {
     const candidates = error?.details?.candidates;
-    const suffix = Array.isArray(candidates) && candidates.length ? ` Найдено товаров: ${candidates.map((item) => item.title).join("; ")}. Вставь ссылку конкретного товара.` : "";
-    showNote(`${error?.message || "Не удалось получить характеристики."}${suffix}`, "error");
+    const host = error?.details?.host;
+    const hostPrefix = host ? `${host}: ` : "";
+    const suffix = Array.isArray(candidates) && candidates.length
+      ? ` Найдено товаров: ${candidates.map((item) => item.title).join("; ")}. Вставь ссылку конкретного товара.`
+      : "";
+    showNote(`${hostPrefix}${error?.message || "Не удалось получить характеристики."}${suffix}`, "error");
   } finally { setLoading(false); }
 }
 
