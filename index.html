@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Specly — сравнение характеристик товаров по ссылкам из разных магазинов." />
+  <meta name="description" content="Specly — универсальное сравнение товаров по ссылкам: характеристики, отличия, цены и предложения магазинов." />
   <meta name="theme-color" content="#0b0d10" />
-  <title>Specly — сравнивай товары, а не вкладки</title>
+  <title>Specly — сравнивай любые товары</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -15,7 +15,8 @@
       <span>Specly</span>
     </a>
     <nav class="header-nav" aria-label="Навигация">
-      <a href="#compare">Сравнение</a>
+      <a href="#compare">Сравнить</a>
+      <a href="#possibilities">Возможности</a>
       <a href="#how">Как работает</a>
       <a href="https://github.com/Deenfoool/Specly" target="_blank" rel="noreferrer">GitHub ↗</a>
     </nav>
@@ -23,28 +24,33 @@
 
   <main id="top">
     <section class="hero">
-      <div class="eyebrow"><span></span> Сравнение без ручной сверки</div>
+      <div class="eyebrow"><span></span> Универсальный сравнитель товаров</div>
       <h1>Сравнивай товары,<br /><em>а не вкладки.</em></h1>
-      <p class="hero-copy">Вставь ссылки на товары из разных магазинов. Specly сведёт характеристики к единому виду, выделит отличия и поможет понять, что действительно важно.</p>
+      <p class="hero-copy">Вставь две ссылки на любые сравнимые товары. Specly определит, что это за товары, приведёт характеристики к одному виду, покажет отличия и соберёт предложения магазинов.</p>
+
+      <div class="category-cloud" aria-label="Примеры категорий">
+        <span>Смартфоны</span><span>Ноутбуки</span><span>Видеокарты</span><span>Телевизоры</span><span>Мониторы</span><span>SSD</span><span>Наушники</span><span>Бытовая техника</span><span>и другое</span>
+      </div>
 
       <div class="compare-card" id="compare">
+        <div class="compare-label">Ссылки на товары</div>
         <div class="url-row">
           <span class="url-index">01</span>
-          <input id="urlA" type="url" inputmode="url" placeholder="https://www.dns-shop.ru/..." aria-label="Ссылка на первый товар" />
+          <input id="urlA" type="url" inputmode="url" placeholder="https://магазин.ru/product/..." aria-label="Ссылка на первый товар" />
         </div>
         <div class="url-row">
           <span class="url-index">02</span>
-          <input id="urlB" type="url" inputmode="url" placeholder="https://www.mvideo.ru/..." aria-label="Ссылка на второй товар" />
+          <input id="urlB" type="url" inputmode="url" placeholder="https://другой-магазин.ru/product/..." aria-label="Ссылка на второй товар" />
         </div>
         <div class="compare-actions">
           <button class="primary-button" id="compareButton" type="button">Сравнить товары <span>→</span></button>
           <button class="ghost-button" id="demoButton" type="button">Показать демо</button>
         </div>
-        <p class="form-note" id="formNote">На первом этапе поддерживаем сравнение видеокарт. Архитектура готовится под другие категории.</p>
+        <p class="form-note" id="formNote">Категория определяется автоматически. Поддержка магазинов и специальных профилей характеристик подключается поэтапно.</p>
       </div>
 
-      <div class="store-strip" aria-label="Планируемые магазины">
-        <span>DNS</span><i>×</i><span>М.Видео</span><i>×</i><span>Ozon</span><i>×</i><span>Яндекс Маркет</span>
+      <div class="store-strip" aria-label="Магазины">
+        <span>DNS</span><i>×</i><span>М.Видео</span><i>×</i><span>Ситилинк</span><i>×</i><span>Ozon</span><i>×</i><span>Яндекс Маркет</span>
       </div>
     </section>
 
@@ -52,7 +58,7 @@
       <div class="section-heading">
         <div>
           <span class="kicker">Результат сравнения</span>
-          <h2>Главные отличия</h2>
+          <h2>Что выбрать</h2>
         </div>
         <div class="filters" role="group" aria-label="Фильтр характеристик">
           <button class="filter active" data-filter="all" type="button">Все</button>
@@ -61,10 +67,16 @@
         </div>
       </div>
 
+      <div class="result-context" id="resultContext"></div>
       <div class="product-grid" id="productGrid"></div>
-
       <div class="summary-card" id="summaryCard"></div>
 
+      <div class="spec-section-heading">
+        <div>
+          <span class="kicker">Характеристики</span>
+          <h3>Сравнение параметров</h3>
+        </div>
+      </div>
       <div class="spec-table-wrap">
         <table class="spec-table">
           <thead>
@@ -78,27 +90,70 @@
           <tbody id="specBody"></tbody>
         </table>
       </div>
+
+      <section class="offers-section" id="offersSection">
+        <div class="offers-heading">
+          <div>
+            <span class="kicker">Где купить</span>
+            <h3>Найденные предложения</h3>
+          </div>
+          <span class="offers-note">Цена и наличие могут меняться в магазине</span>
+        </div>
+        <div class="offers-columns" id="offersGrid"></div>
+      </section>
+    </section>
+
+    <section class="possibilities" id="possibilities">
+      <div class="section-heading">
+        <div>
+          <span class="kicker">Один инструмент для разных покупок</span>
+          <h2>Specly понимает контекст категории</h2>
+        </div>
+      </div>
+      <div class="feature-grid">
+        <article>
+          <span class="feature-icon">⌁</span>
+          <h3>Определяет товар</h3>
+          <p>Категория, бренд, модель и модификация отделяются от маркетингового названия магазина.</p>
+        </article>
+        <article>
+          <span class="feature-icon">≋</span>
+          <h3>Сводит характеристики</h3>
+          <p>Разные названия и единицы измерения превращаются в единый набор сопоставимых параметров.</p>
+        </article>
+        <article>
+          <span class="feature-icon">↗</span>
+          <h3>Объясняет разницу</h3>
+          <p>Для каждой категории важность параметров разная: больше не всегда означает лучше.</p>
+        </article>
+        <article>
+          <span class="feature-icon">₽</span>
+          <h3>Ищет где купить</h3>
+          <p>Для распознанной модели собираются цены, наличие и прямые ссылки на карточки магазинов.</p>
+        </article>
+      </div>
     </section>
 
     <section class="how" id="how">
       <div class="section-heading">
         <div>
           <span class="kicker">Как это работает</span>
-          <h2>От ссылки до понятного выбора</h2>
+          <h2>От двух ссылок до решения</h2>
         </div>
       </div>
       <div class="steps">
-        <article><span>01</span><h3>Получаем данные</h3><p>Specly извлекает название, цену и характеристики со страниц магазинов.</p></article>
-        <article><span>02</span><h3>Нормализуем</h3><p>«8192 МБ», «8 GB» и «8 ГБ» превращаются в одно сравнимое значение.</p></article>
-        <article><span>03</span><h3>Сопоставляем</h3><p>Разные названия вроде «Шина памяти» и «Memory Bus» становятся одним параметром.</p></article>
-        <article><span>04</span><h3>Показываем смысл</h3><p>Вместо стены характеристик — отличия, важность параметров и краткий вывод.</p></article>
+        <article><span>01</span><h3>Распознаём</h3><p>Specly понимает категорию и точную модель каждого товара.</p></article>
+        <article><span>02</span><h3>Собираем</h3><p>Получаем характеристики из доступных источников и страниц магазинов.</p></article>
+        <article><span>03</span><h3>Нормализуем</h3><p>Приводим названия, значения и единицы измерения к единому виду.</p></article>
+        <article><span>04</span><h3>Сравниваем</h3><p>Показываем важные отличия с учётом контекста конкретной категории.</p></article>
+        <article><span>05</span><h3>Ищем цены</h3><p>Находим эту же модель в магазинах и собираем прямые ссылки на предложения.</p></article>
       </div>
     </section>
   </main>
 
   <footer>
     <a class="brand" href="#top"><span class="brand-mark">S</span><span>Specly</span></a>
-    <p>Сделано для тех, кто устал сравнивать характеристики вручную.</p>
+    <p>Сравнение товаров, характеристик и цен в одном месте.</p>
     <a href="https://github.com/Deenfoool/Specly" target="_blank" rel="noreferrer">Исходный код ↗</a>
   </footer>
 
