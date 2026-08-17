@@ -1,4 +1,5 @@
 import { validateProductUrl } from '../fetchPage.js';
+import { resolveYandexMarketProduct } from '../offers/yandexMarket.js';
 import { parseDns } from './dns.js';
 import { parseMvideo } from './mvideo.js';
 import { parseGenericStore } from './generic.js';
@@ -7,7 +8,7 @@ const STORES = [
   { hosts: ['dns-shop.ru', 'www.dns-shop.ru'], name: 'DNS', parser: parseDns },
   { hosts: ['mvideo.ru', 'www.mvideo.ru'], name: 'М.Видео', parser: parseMvideo },
   { hosts: ['ozon.ru', 'www.ozon.ru'], name: 'Ozon' },
-  { hosts: ['market.yandex.ru'], name: 'Яндекс Маркет' },
+  { hosts: ['market.yandex.ru'], name: 'Яндекс Маркет', parser: resolveYandexMarketProduct },
   { hosts: ['wildberries.ru', 'www.wildberries.ru'], name: 'Wildberries' },
   { hosts: ['citilink.ru', 'www.citilink.ru'], name: 'Ситилинк' },
   { hosts: ['megamarket.ru', 'www.megamarket.ru'], name: 'Мегамаркет' },
