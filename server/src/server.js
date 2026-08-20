@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { compareUrls } from './compare.js';
-import { FetchError } from './fetchPage.js';
+import { getDiagnostics } from './diagnostics.js';
+import { errorPayload } from './http.js';
 
 const PORT = Number(process.env.PORT || 8787);
 const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || '*')
@@ -18,7 +19,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && req.url === '/api/health') {
-      json(res, 200, { ok: true, service: 'specly-parser', version: '0.1.0' });
+      json(res, 200, getDiagnostics());
       return;
     }
 
@@ -31,14 +32,8 @@ const server = http.createServer(async (req, res) => {
 
     json(res, 404, { error: { code: 'NOT_FOUND', message: 'Маршрут не найден' } });
   } catch (error) {
-    const status = statusFor(error);
-    json(res, status, {
-      error: {
-        code: error.code || 'INTERNAL_ERROR',
-        message: status >= 500 ? safeServerMessage(error) : error.message,
-        ...(error.details ? { details: error.details } : {})
-      }
-    });
+    const payload = errorPayload(error);
+    json(res, payload.status, payload.body);
   }
 });
 
@@ -78,21 +73,6 @@ async function readJson(req) {
     error.code = 'INVALID_JSON';
     throw error;
   }
-}
-
-function statusFor(error) {
-  if (error instanceof FetchError) {
-    if (['INVALID_URL', 'UNSUPPORTED_PROTOCOL', 'UNSUPPORTED_STORE'].includes(error.code)) return 400;
-    return 502;
-  }
-  if (['INVALID_REQUEST', 'SAME_URLS', 'DNS_CATALOG_URL', 'PAYLOAD_TOO_LARGE', 'INVALID_JSON'].includes(error.code)) return 400;
-  if (error.code === 'PRODUCT_PARSE_FAILED') return 422;
-  return 500;
-}
-
-function safeServerMessage(error) {
-  if (error instanceof FetchError || error.code === 'PRODUCT_PARSE_FAILED') return error.message;
-  return 'Внутренняя ошибка парсера';
 }
 
 function json(res, status, payload) {

@@ -1,8 +1,6 @@
 # Specly Parser API
 
-## POST /api/compare
-
-Запрос содержит ровно две HTTPS-ссылки на поддерживаемые магазины.
+## POST `/api/compare`
 
 ```json
 {
@@ -13,80 +11,68 @@
 }
 ```
 
-Ответ:
+Обе ссылки должны быть HTTPS URL зарегистрированных магазинов. Redirect разрешён только между host aliases одного store.
+
+Успешный ответ может быть полным или частичным:
 
 ```json
 {
-  "category": "gpu",
+  "status": "partial",
+  "category": "smartphone",
+  "categories": ["smartphone", "smartphone"],
+  "mixedCategories": false,
+  "partialComparison": true,
   "products": [
     {
       "store": "DNS",
       "source": "dns-shop.ru",
       "url": "https://www.dns-shop.ru/product/.../",
-      "title": "Видеокарта ...",
-      "price": { "value": 12999, "currency": "RUB" },
-      "image": "https://...",
-      "specs": {
-        "gpu": "Radeon RX 580",
-        "video_memory_gb": 8,
-        "memory_type": "GDDR5",
-        "memory_bus_bit": 256
-      }
+      "title": "Смартфон Samsung Galaxy A56 8/256 ГБ",
+      "price": { "value": 36999, "currency": "RUB" },
+      "available": true,
+      "category": "smartphone",
+      "identity": {
+        "brand": "Samsung",
+        "model": "Galaxy A56 5G",
+        "variant": "8/256 ГБ",
+        "identifiers": { "sku": "5620468", "mpn": null, "gtin": null, "article": null },
+        "attributes": { "ramGb": 8, "storageGb": 256, "gpuMemoryGb": null, "capacityGb": null, "color": null }
+      },
+      "specs": { "ram_gb": 8, "storage_gb": 256 },
+      "specsStatus": "available",
+      "partial": false,
+      "resolvedBy": "browser",
+      "fetchAttempts": [
+        { "strategy": "direct", "ok": false, "code": "UPSTREAM_BLOCKED", "status": 401 },
+        { "strategy": "browser", "ok": true, "status": 200 }
+      ],
+      "offers": []
     }
   ],
-  "comparison": [
-    {
-      "key": "video_memory_gb",
-      "label": "Видеопамять",
-      "values": [8, 6],
-      "displayValues": ["8 ГБ", "6 ГБ"],
-      "different": true,
-      "important": true,
-      "preference": "higher",
-      "winner": 0,
-      "note": "Первый товар предпочтительнее по этому параметру; разница 2 ГБ"
-    }
-  ],
-  "summary": "..."
+  "comparison": [],
+  "summary": "...",
+  "errors": []
 }
 ```
 
-## GET /api/health
+`status: partial` и HTTP 200 означают, что товары распознаны, но часть specs/offers недоступна. Frontend должен показать подтверждённые данные и не трактовать ответ как полный отказ.
 
-```json
-{ "ok": true, "service": "specly-parser", "version": "0.1.0" }
-```
+## Structured errors
 
-## Нормализованные GPU-ключи
+- `UPSTREAM_BLOCKED` — магазин или anti-bot не отдал карточку;
+- `EMPTY_PAGE` — ответ не содержит полезного документа;
+- `PRODUCT_NOT_FOUND` — получена оболочка/каталог вместо карточки;
+- `PRODUCT_PARSE_FAILED` — документ есть, но товар не распознан;
+- `OFFERS_UNAVAILABLE` — отдельный provider предложений недоступен;
+- `BAD_REDIRECT` — redirect вышел за host aliases исходного store;
+- `INVALID_URL`, `UNSUPPORTED_PROTOCOL`, `UNSUPPORTED_STORE` — ошибка входного URL.
 
-`gpu`, `video_memory_gb`, `memory_type`, `memory_bus_bit`, `core_clock_mhz`, `memory_clock_mhz`, `tdp_w`, `power_connector`, `recommended_psu_w`, `pcie`, `length_mm`, `width_mm`, `height_mm`, `hdmi_count`, `displayport_count`.
+Полный HTTP error возвращается только когда запрос невалиден или ни один товар нельзя безопасно идентифицировать. Блокировка одного offer provider не ломает сравнение.
 
-## Стратегия извлечения
+## GET `/health`
 
-1. JSON-LD и meta-теги для карточки товара;
-2. видимый HTML для характеристик;
-3. нормализация русских названий и единиц;
-4. DNS дополнительно пробует отдельный URL `/product/characteristics/...`;
-5. отсутствующие параметры остаются отсутствующими — Specly не додумывает значения.
+Возвращает version, `chromiumAvailable`, registry stores и boolean-статус optional providers. Секреты не возвращаются.
 
 ## DNS catalog URL
 
-`/catalog/recipe/...` — это выдача, а не карточка товара. Ответ:
-
-```json
-{
-  "error": {
-    "code": "DNS_CATALOG_URL",
-    "message": "Ссылка DNS ведёт на каталог, а не на конкретный товар",
-    "details": {
-      "candidates": [
-        { "title": "Видеокарта ...", "url": "https://www.dns-shop.ru/product/.../" }
-      ]
-    }
-  }
-}
-```
-
-## Безопасность
-
-Parser API не является открытым универсальным URL-прокси. Разрешены только HTTPS-хосты DNS и М.Видео; каждый redirect повторно проходит whitelist-проверку. Размер HTML и время ответа upstream ограничены.
+`/catalog/...` — каталог, не карточка. Ответ имеет код `DNS_CATALOG_URL` и может содержать до шести candidate links. Candidate extraction больше не фильтруется только по видеокартам.

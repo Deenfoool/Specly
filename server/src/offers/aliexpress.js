@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { buildProductIdentity, scoreIdentityMatch } from '../identity.js';
 
 const API_URL = 'https://eco.taobao.com/router/rest';
 const TIMEOUT_MS = 10_000;
@@ -113,6 +114,14 @@ function toOffer(candidate, score) {
 }
 
 function matchScore(product, candidate) {
+  const candidateIdentity = buildProductIdentity({
+    title: candidate?.product_title || '',
+    jsonLd: { sku: candidate?.product_id || null },
+    category: product?.category || 'generic'
+  });
+  const identityScore = scoreIdentityMatch(product?.identity, candidateIdentity);
+  if (identityScore === 0) return 0;
+
   const expected = normalizeTokens(product?.identity?.canonicalName || product?.title || '');
   const actual = new Set(normalizeTokens(candidate?.product_title || ''));
   if (!expected.length || !actual.size) return 0;
@@ -131,7 +140,8 @@ function matchScore(product, candidate) {
     totalWeight += weight;
     if (actual.has(token)) matchedWeight += weight;
   }
-  return totalWeight ? matchedWeight / totalWeight : 0;
+  const tokenScore = totalWeight ? matchedWeight / totalWeight : 0;
+  return Math.min(identityScore, tokenScore);
 }
 
 function normalizeTokens(value) {

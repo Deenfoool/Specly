@@ -1,15 +1,15 @@
 import { cleanText, normalizeLabel } from './html.js';
 
 const CATEGORY_RULES = [
-  ['gpu', [/видеокарт/i, /graphics card/i, /geforce\s+(?:rtx|gtx|gt)/i, /radeon\s+rx/i]],
+  ['gpu', [/видеокарт/i, /\bvideokart/i, /graphics card/i, /geforce\s+(?:rtx|gtx|gt)/i, /radeon\s+rx/i]],
   ['cpu', [/процессор/i, /processor/i, /\b(?:ryzen|core\s+i[3579]|xeon|celeron|pentium)\b/i]],
-  ['smartphone', [/смартфон/i, /мобильн(?:ый|ого) телефон/i, /smartphone/i, /\biphone\b/i, /\bgalaxy\s+[asz]/i]],
-  ['laptop', [/ноутбук/i, /laptop/i, /ультрабук/i, /macbook/i]],
+  ['smartphone', [/смартфон/i, /\bsmartfon/i, /мобильн(?:ый|ого) телефон/i, /smartphone/i, /\biphone\b/i, /\bgalaxy\s+[asz]/i]],
+  ['laptop', [/ноутбук/i, /\bnoutbuk/i, /laptop/i, /ультрабук/i, /macbook/i]],
   ['monitor', [/монитор/i, /monitor/i]],
-  ['tv', [/телевизор/i, /\btv\b/i, /smart tv/i]],
+  ['tv', [/телевизор/i, /\btelevizor/i, /\btv\b/i, /smart tv/i]],
   ['ssd', [/\bssd\b/i, /твердотельн/i, /solid state/i]],
   ['headphones', [/наушник/i, /гарнитур/i, /headphones?/i, /headset/i]],
-  ['refrigerator', [/холодильник/i, /refrigerator/i]],
+  ['refrigerator', [/холодильник/i, /\bholodilnik/i, /refrigerator/i]],
   ['washing-machine', [/стиральн(?:ая|ой) машин/i, /washer/i, /washing machine/i]],
   ['vacuum-cleaner', [/пылесос/i, /vacuum/i]],
   ['microwave', [/микроволнов/i, /свч/i, /microwave/i]],

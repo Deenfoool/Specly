@@ -1,23 +1,34 @@
 import { getYandexMarketOffer, yandexMarketConfigured } from './yandexMarket.js';
 import { searchAliExpressOffers, aliexpressConfigured } from './aliexpress.js';
 
-export async function enrichProductOffers(product) {
+export async function enrichProductOffers(product, { providers = null } = {}) {
   const existing = Array.isArray(product.offers) ? product.offers : [];
+  const activeProviders = providers || [
+    { id: 'yandex-market-affiliate', resolve: getYandexMarketOffer },
+    { id: 'aliexpress-affiliate', resolve: searchAliExpressOffers }
+  ];
 
-  const [yandexOffer, aliOffers] = await Promise.all([
-    getYandexMarketOffer(product),
-    searchAliExpressOffers(product)
-  ]);
+  const results = await Promise.allSettled(activeProviders.map((provider) => provider.resolve(product)));
+  const providerOffers = results.flatMap((result) => result.status === 'fulfilled'
+    ? Array.isArray(result.value) ? result.value : result.value ? [result.value] : []
+    : []);
+  const offerErrors = results
+    .map((result, index) => result.status === 'rejected' ? {
+      code: 'OFFERS_UNAVAILABLE',
+      provider: activeProviders[index].id,
+      message: String(result.reason?.message || 'Провайдер предложений недоступен').slice(0, 180)
+    } : null)
+    .filter(Boolean);
 
   const combined = [
-    ...(yandexOffer ? [yandexOffer] : []),
+    ...providerOffers,
     ...existing,
-    ...aliOffers
   ];
 
   return {
     ...product,
-    offers: dedupeOffers(combined)
+    offers: dedupeOffers(combined),
+    offerErrors: [...(product.offerErrors || []), ...offerErrors]
   };
 }
 

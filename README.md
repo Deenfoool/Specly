@@ -2,94 +2,91 @@
 
 **Сравнивай товары, а не вкладки.**
 
-Specly — веб-инструмент для сравнения товаров по ссылкам из разных интернет-магазинов. Первая категория MVP — видеокарты; первые адаптеры — DNS и М.Видео.
+Specly — универсальный сравнитель товаров по двум ссылкам. Frontend размещается на GitHub Pages, а Parser API и Chromium-контейнер рассчитаны на Yandex Cloud.
 
-## Что уже работает
+## Что умеет ядро
 
-- адаптивный интерфейс и ввод двух URL;
-- серверный Parser API на Node.js 20+ без внешних зависимостей;
-- адаптеры DNS и М.Видео;
-- DNS автоматически запрашивает отдельную страницу полных характеристик `/product/characteristics/...`;
-- JSON-LD/meta fallback для названия, изображения и цены;
-- нормализация единиц: ГБ, бит, МГц, Вт, см → мм;
-- единый словарь GPU-характеристик;
-- сравнение с направлениями `higher`, `lower`, `context`, `neutral`;
-- фильтры `Все`, `Только отличия`, `Важные`;
-- защита Parser API от произвольных URL: разрешены только поддерживаемые HTTPS-магазины и проверяются редиректы;
-- тесты нормализации и DNS URL handling.
+- определяет магазин, категорию, бренд, модель, модификацию и доступные идентификаторы;
+- читает JSON-LD, meta-теги, видимый HTML и hydration state (`__NEXT_DATA__` и похожие JSON-состояния);
+- нормализует смартфоны, ноутбуки, GPU, CPU, мониторы, телевизоры, SSD, наушники и бытовую технику;
+- использует generic fallback для неизвестных категорий;
+- разделяет характеристики товара и предложения магазинов;
+- различает модификации, например `8/128 ГБ` и `8/256 ГБ`;
+- возвращает полезный partial result, если магазин отдал identity/offer, но заблокировал характеристики;
+- не требует расширения браузера пользователя.
 
 ## Архитектура
 
 ```text
-Frontend (GitHub Pages)
-        │ POST /api/compare
-        ▼
-Specly Parser API
-        │
-        ├── DNS adapter ─────► /product/characteristics/...
-        ├── M.Video adapter
-        │
-        ▼
-HTML/JSON-LD extraction
-        │
-        ▼
-GPU Normalizer
-        │
-        ▼
-Comparison Engine
+URL A + URL B
+      │
+      ▼
+Store Registry (server/src/stores.js)
+      │
+      ▼
+Fetch Strategy: direct → Chromium → reader fallback
+      │
+      ▼
+JSON-LD / embedded JSON / rendered HTML
+      │
+      ▼
+Product Identity ─────┬──── Spec normalization
+                      └──── Offer providers
+                              │
+                              ▼
+                     Universal comparison
 ```
 
-## Локальный запуск Parser API
+`browser-parser` является транспортом получения rendered HTML. Он вызывает то же ядро `server/src`, а не содержит отдельный GPU-only comparison engine.
 
-Нужен Node.js 20 или новее.
+## Магазины
+
+Единый registry содержит DNS, М.Видео, Ozon, Яндекс Маркет, Wildberries, Ситилинк, Мегамаркет, ВсеИнструменты, Эльдорадо и AliExpress. Поддержка в registry означает, что URL безопасно допускается в pipeline; она не гарантирует, что конкретный магазин не включит антибот-защиту.
+
+Актуальные результаты публичных проб: [docs/LIVE_STORE_AUDIT.md](docs/LIVE_STORE_AUDIT.md).
+
+## Локальная проверка ядра
+
+Нужен Node.js 20+.
 
 ```bash
-cd server
 npm test
-npm start
+npm run test:live
+npm --prefix server start
 ```
 
-API запустится на `http://localhost:8787`.
+Unit/integration tests не обращаются к магазинам. `test:live` запускается отдельно, потому что статусы и страницы магазинов нестабильны.
 
-Фронтенд можно поднять отдельно из корня:
+Frontend можно открыть отдельно:
 
 ```bash
 python -m http.server 8000
 ```
 
-Открой:
-
 ```text
-http://localhost:8000/?api=http://localhost:8787
+http://localhost:8000/?api=http://localhost:8787/api/compare
 ```
 
-## API
+## Chromium-контейнер
 
-```http
-POST /api/compare
-Content-Type: application/json
+```bash
+docker build -f browser-parser/Dockerfile -t specly-browser-parser .
+docker run --rm -p 8080:8080 --shm-size=1g specly-browser-parser
 ```
 
-```json
-{
-  "urls": [
-    "https://www.dns-shop.ru/product/.../",
-    "https://www.mvideo.ru/products/..."
-  ]
-}
+Проверка:
+
+```bash
+curl http://localhost:8080/health
+curl -X POST http://localhost:8080/api/compare \
+  -H 'content-type: application/json' \
+  -d '{"urls":["https://www.dns-shop.ru/product/.../","https://www.mvideo.ru/products/..."]}'
 ```
 
-Подробный контракт: `docs/PARSER_API.md`.
+Подробности: [browser-parser/README.md](browser-parser/README.md) и [docs/PARSER_API.md](docs/PARSER_API.md).
 
-## Важное про DNS
+## Конфигурация
 
-Ссылка вида `/catalog/recipe/...` ведёт на каталог, а не на один товар. Specly не выбирает случайный товар из выдачи: API возвращает ошибку `DNS_CATALOG_URL` и, если получилось, список найденных карточек. Для сравнения нужна ссылка конкретного товара `/product/...`.
+Все провайдеры optional. Без ключей сравнение продолжает работать с доступными источниками. Полный список переменных находится в [server/.env.example](server/.env.example). Health endpoint показывает только boolean-состояние конфигурации и никогда не выводит значения токенов.
 
-## Следующие этапы
-
-1. Разместить Parser API на серверном хостинге и прописать его URL во фронтенде.
-2. Проверить адаптеры на расширенной выборке живых карточек DNS и М.Видео.
-3. Добавить кэш и ограничение частоты запросов перед публичным запуском.
-4. Добавить процессоры, SSD, ноутбуки и другие магазины.
-
-Specly не объявляет товар победителем просто по числу «зелёных строк»: часть параметров зависит от сценария и помечается как `context`.
+Referral API Яндекс Маркета используется как источник metadata/offer, но не как единственный источник характеристик.

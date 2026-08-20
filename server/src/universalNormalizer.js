@@ -273,22 +273,22 @@ function parseMp(value) { return unitNumber(value, /([\d.,]+)\s*(?:мп|mp)/i); 
 function parseMs(value) { return unitNumber(value, /([\d.,]+)\s*(?:мс|ms)/i); }
 function parseNits(value) { return unitNumber(value, /([\d.,]+)\s*(?:кд\/?м²|нит|nits?)/i); }
 function parseMbps(value) { return unitNumber(value, /([\d.,]+)\s*(?:мб\/?с|mb\/?s)/i); }
-function parseLiters(value) { return unitNumber(value, /([\d.,]+)\s*(?:л|l)\b/i); }
+function parseLiters(value) { return unitNumber(value, /([\d.,]+)\s*(?:л|l)(?![a-zа-я])/i); }
 function parseDb(value) { return unitNumber(value, /([\d.,]+)\s*(?:дб|db)/i); }
 function parseKg(value) { return unitNumber(value, /([\d.,]+)\s*(?:кг|kg)/i); }
 function parseRpm(value) { return unitNumber(value, /([\d.,]+)\s*(?:об\/?мин|rpm)/i); }
-function parseHours(value) { return unitNumber(value, /([\d.,]+)\s*(?:ч|час|hours?|h)\b/i); }
+function parseHours(value) { return unitNumber(value, /([\d.,]+)\s*(?:ч|час|hours?|h)(?![a-zа-я])/i); }
 function parseMinutes(value) { return unitNumber(value, /([\d.,]+)\s*(?:мин|minutes?)/i); }
 function parseInches(value) { return unitNumber(value, /([\d.,]+)\s*(?:″|"|дюйм|inch)/i) ?? firstNumber(value); }
 function parseWeight(value) {
   const kg = unitNumber(value, /([\d.,]+)\s*(?:кг|kg)/i);
   if (kg !== null) return kg * 1000;
-  return unitNumber(value, /([\d.,]+)\s*(?:г|g)\b/i);
+  return unitNumber(value, /([\d.,]+)\s*(?:г|g)(?![a-zа-я])/i);
 }
 function parseLength(value) {
   const mm = unitNumber(value, /([\d.,]+)\s*(?:мм|mm)/i); if (mm !== null) return mm;
   const cm = unitNumber(value, /([\d.,]+)\s*(?:см|cm)/i); if (cm !== null) return cm * 10;
-  const m = unitNumber(value, /([\d.,]+)\s*(?:м|m)\b/i); return m === null ? null : m * 1000;
+  const m = unitNumber(value, /([\d.,]+)\s*(?:м|m)(?![a-zа-я])/i); return m === null ? null : m * 1000;
 }
 function parseMonths(value) {
   const months = unitNumber(value, /([\d.,]+)\s*(?:мес|месяц)/i); if (months !== null) return months;

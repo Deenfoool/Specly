@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "npm --prefix server test",
+    "test:live": "npm --prefix server run test:live"
+  },
   "engines": {
     "node": ">=20"
   }

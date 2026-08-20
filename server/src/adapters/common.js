@@ -2,10 +2,14 @@ import { cleanText, extractMeta, extractTagText, findProductJsonLd, htmlToLines 
 import { detectCategory } from '../category.js';
 import { buildProductIdentity } from '../identity.js';
 import { normalizeProductSpecs } from '../universalNormalizer.js';
+import { FetchError } from '../fetchPage.js';
+import { extractStructuredProduct } from './structured.js';
 
-export function parseCommonProduct({ html, url, store, extraLines = [] }) {
-  const jsonLd = findProductJsonLd(html);
-  const lines = [...htmlToLines(html), ...extraLines].filter(Boolean);
+export function parseCommonProduct({ html, url, store, storeId = null, extraLines = [], fetchInfo = null }) {
+  assertUsablePage(html, url, store);
+  const embedded = extractStructuredProduct(html, url, storeId);
+  const jsonLd = findProductJsonLd(html) || embedded.product;
+  const lines = [...htmlToLines(html), ...embedded.lines, ...extraLines].filter(Boolean);
   const title = jsonLd?.name
     || extractMeta(html, 'og:title')
     || extractTagText(html, 'h1')
@@ -21,6 +25,7 @@ export function parseCommonProduct({ html, url, store, extraLines = [] }) {
   const price = extractPrice(jsonLd, html, lines);
   const normalized = normalizeProductSpecs({ category: categoryResult.category, lines, title: cleanedTitle });
   const source = new URL(url).hostname.replace(/^www\./, '');
+  const hasSpecs = Object.keys(normalized.specs).length > 0;
 
   return {
     store,
@@ -36,8 +41,23 @@ export function parseCommonProduct({ html, url, store, extraLines = [] }) {
     specs: normalized.specs,
     specMeta: normalized.meta,
     rawSpecs: normalized.raw,
-    offers: price ? [{ store, source, price, available: extractAvailability(jsonLd), url }] : []
+    offers: [{ store, source, price, available: extractAvailability(jsonLd), url, match: 'source-url' }],
+    specsStatus: hasSpecs ? 'available' : 'unavailable',
+    partial: !hasSpecs,
+    resolvedBy: embedded.provider || fetchInfo?.via || 'html',
+    fetchAttempts: fetchInfo?.attempts || []
   };
+}
+
+function assertUsablePage(html, url, store) {
+  const sample = cleanText(String(html).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ')).slice(0, 16000);
+  if (!sample) throw new FetchError('EMPTY_PAGE', `${store}: получена пустая страница`, { host: new URL(url).hostname });
+  if (/(?:access to resource was blocked|access denied|подтвердите, что запросы отправляли вы, а не робот|имеем дело именно с вами, а не с ботом|automated systems|captcha)/i.test(sample)
+    && !/(?:характеристики|код товара|в корзину|цена|смартфон|ноутбук|телевизор|холодильник)/i.test(sample)) {
+    throw new FetchError('UPSTREAM_BLOCKED', `${store}: страница заменена антибот-проверкой`, {
+      host: new URL(url).hostname
+    });
+  }
 }
 
 function extractPrice(jsonLd, html, lines) {

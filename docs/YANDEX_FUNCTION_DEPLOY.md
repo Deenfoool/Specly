@@ -1,7 +1,7 @@
 # Specly → Yandex Cloud Function
 
 Frontend: GitHub Pages.
-Backend: Yandex Cloud Function (until the Chromium Serverless Container replaces direct fetch for protected stores).
+Backend: Yandex Cloud Function для direct/reader fallback. Для защищённых магазинов основной production-вариант — Chromium Serverless Container из `browser-parser/Dockerfile`.
 
 ## Build deployment ZIP
 
@@ -34,6 +34,7 @@ Optional offer providers are enabled by environment variables:
 
 ```text
 YANDEX_MARKET_AFFILIATE_TOKEN=
+YANDEX_MARKET_AUTH_KEY=
 YANDEX_MARKET_PLACE_ID=
 YANDEX_MARKET_CLID=
 ALIEXPRESS_APP_KEY=
@@ -53,20 +54,10 @@ Open the function HTTPS URL in a browser. A current deployment returns JSON cont
 {
   "ok": true,
   "service": "specly-parser-yandex",
-  "version": "0.3.0-universal",
-  "stores": [
-    "dns-shop.ru",
-    "mvideo.ru",
-    "ozon.ru",
-    "market.yandex.ru",
-    "wildberries.ru",
-    "citilink.ru",
-    "megamarket.ru",
-    "vseinstrumenti.ru",
-    "eldorado.ru",
-    "aliexpress.ru"
-  ]
+  "version": "0.4.0-resolution-engine",
+  "chromiumAvailable": false,
+  "stores": [{ "id": "dns", "fetchStrategies": ["direct", "browser", "reader"] }]
 }
 ```
 
-If the response has another version or does not list `market.yandex.ru`, the old function version is still serving traffic.
+Если version отличается, обслуживается старая ревизия. `chromiumAvailable: false` для Cloud Function ожидаем: Chromium запускается в отдельном Serverless Container.

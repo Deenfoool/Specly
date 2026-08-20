@@ -115,7 +115,8 @@ function renderContext(data) {
   els.resultContext.innerHTML = `
     <span class="context-pill"><b>${escapeHtml(category)}</b></span>
     <span>${count} параметров сопоставлено</span>
-    <span>${differences} отличий найдено</span>`;
+    <span>${differences} отличий найдено</span>
+    ${data.partial ? '<span class="context-pill">Частичный результат</span>' : ''}`;
 }
 
 function renderProducts(products, category) {
@@ -266,7 +267,12 @@ async function compareEnteredUrls() {
     if (!response.ok) throw payload.error || { message: `API вернул HTTP ${response.status}` };
 
     renderComparison(mapApiResponse(payload));
-    showNote("Товары распознаны, доступные характеристики сопоставлены.", "ok");
+    showNote(
+      currentData?.partial
+        ? "Получен частичный результат: один из источников не отдал все характеристики, но доступные данные и ссылки сохранены."
+        : "Товары распознаны, доступные характеристики сопоставлены.",
+      "ok"
+    );
   } catch (error) {
     const candidates = error?.details?.candidates;
     const host = error?.details?.host;
@@ -314,6 +320,8 @@ function mapApiResponse(payload) {
   return {
     category: payload.category || "generic",
     products,
+    partial: payload.status === "partial" || Boolean(payload.partialComparison),
+    errors: Array.isArray(payload.errors) ? payload.errors : [],
     summary: payload.summary || "Сравнение готово.",
     specs: (payload.comparison || []).map((row) => ({
       key: row.key,

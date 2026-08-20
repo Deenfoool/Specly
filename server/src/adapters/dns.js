@@ -2,10 +2,10 @@ import { htmlToLines } from '../html.js';
 import { fetchHtml } from '../fetchPage.js';
 import { parseCommonProduct } from './common.js';
 
-export async function parseDns(url) {
+export async function parseDns(url, options = {}) {
   const parsed = new URL(url);
   if (parsed.pathname.startsWith('/catalog/')) {
-    const { html } = await fetchHtml(url);
+    const { html } = await fetchHtml(url, options);
     const candidates = extractProductCandidates(html, parsed.origin);
     const error = new Error('Ссылка DNS ведёт на каталог, а не на конкретный товар');
     error.code = 'DNS_CATALOG_URL';
@@ -13,20 +13,27 @@ export async function parseDns(url) {
     throw error;
   }
 
-  const main = await fetchHtml(url);
+  const main = await fetchHtml(url, options);
   const characteristicsUrl = toCharacteristicsUrl(main.finalUrl);
   let extraLines = [];
 
   if (characteristicsUrl && characteristicsUrl !== main.finalUrl) {
     try {
-      const full = await fetchHtml(characteristicsUrl);
+      const full = await fetchHtml(characteristicsUrl, options);
       extraLines = htmlToLines(full.html);
     } catch {
       // Summary specs from the main product page are still useful.
     }
   }
 
-  return parseCommonProduct({ html: main.html, url: main.finalUrl, store: 'DNS', extraLines });
+  return parseCommonProduct({
+    html: main.html,
+    url: main.finalUrl,
+    store: 'DNS',
+    storeId: 'dns',
+    extraLines,
+    fetchInfo: main
+  });
 }
 
 export function toCharacteristicsUrl(value) {
@@ -53,7 +60,7 @@ export function extractProductCandidates(content, origin = 'https://www.dns-shop
       .replace(/^#{1,6}\s+/, '')
       .replace(/\s+/g, ' ')
       .trim();
-    if (!/видеокарт/i.test(title)) return;
+    if (title.length < 4) return;
 
     seen.add(href);
     results.push({ title, url: href });
@@ -64,7 +71,7 @@ export function extractProductCandidates(content, origin = 'https://www.dns-shop
   while ((match = htmlRe.exec(content)) && results.length < 6) add(match[1], match[2]);
 
   // Jina Reader и похожие reader-сервисы возвращают Markdown-ссылки.
-  const markdownRe = /\[([^\]]*видеокарт[^\]]*)\]\((https?:\/\/[^\s)]+\/product\/(?!characteristics\/)[^\s)#?]+\/?[^\s)]*)\)/gi;
+  const markdownRe = /\[([^\]]{4,220})\]\((https?:\/\/[^\s)]+\/product\/(?!characteristics\/)[^\s)#?]+\/?[^\s)]*)\)/gi;
   while ((match = markdownRe.exec(content)) && results.length < 6) add(match[2], match[1]);
 
   // Некоторые reader-ответы выводят URL отдельной строкой рядом с названием.

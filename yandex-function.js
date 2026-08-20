@@ -1,6 +1,6 @@
 import { compareUrls } from './server/src/compare.js';
-import { FetchError } from './server/src/fetchPage.js';
-import { getYandexMarketConfigStatus } from './server/src/offers/yandexMarket.js';
+import { getDiagnostics } from './server/src/diagnostics.js';
+import { errorPayload } from './server/src/http.js';
 
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',
@@ -16,26 +16,7 @@ export const handler = async (event = {}) => {
   if (method === 'OPTIONS') return response(204, null);
 
   if (method === 'GET') {
-    return response(200, {
-      ok: true,
-      service: 'specly-parser-yandex',
-      version: '0.3.4-market-auth-key',
-      stores: [
-        'dns-shop.ru',
-        'mvideo.ru',
-        'ozon.ru',
-        'market.yandex.ru',
-        'wildberries.ru',
-        'citilink.ru',
-        'megamarket.ru',
-        'vseinstrumenti.ru',
-        'eldorado.ru',
-        'aliexpress.ru'
-      ],
-      offerProviders: {
-        yandexMarketAffiliate: getYandexMarketConfigStatus()
-      }
-    });
+    return response(200, getDiagnostics({ service: 'specly-parser-yandex', chromiumAvailable: false }));
   }
 
   if (method !== 'POST') {
@@ -47,14 +28,8 @@ export const handler = async (event = {}) => {
     const result = await compareUrls(body.urls);
     return response(200, result);
   } catch (error) {
-    const status = statusFor(error);
-    return response(status, {
-      error: {
-        code: error.code || 'INTERNAL_ERROR',
-        message: publicMessage(error, status),
-        ...(error.details ? { details: error.details } : {})
-      }
-    });
+    const payload = errorPayload(error);
+    return response(payload.status, payload.body);
   }
 };
 
@@ -80,21 +55,4 @@ function response(statusCode, payload) {
     headers: CORS_HEADERS,
     body: payload == null ? '' : JSON.stringify(payload)
   };
-}
-
-function statusFor(error) {
-  if (error instanceof FetchError) {
-    if (['INVALID_URL', 'UNSUPPORTED_PROTOCOL', 'UNSUPPORTED_STORE'].includes(error.code)) return 400;
-    return 502;
-  }
-  if (['INVALID_REQUEST', 'SAME_URLS', 'DNS_CATALOG_URL', 'PAYLOAD_TOO_LARGE', 'INVALID_JSON', 'YANDEX_MARKET_API_NOT_CONFIGURED'].includes(error.code)) return 400;
-  if (error.code === 'PRODUCT_PARSE_FAILED') return 422;
-  if (error.code === 'YANDEX_MARKET_API_ERROR') return 502;
-  return 500;
-}
-
-function publicMessage(error, status) {
-  if (error instanceof FetchError) return error.message;
-  if (['PRODUCT_PARSE_FAILED', 'YANDEX_MARKET_API_NOT_CONFIGURED', 'YANDEX_MARKET_API_ERROR'].includes(error.code)) return error.message;
-  return status >= 500 ? 'Внутренняя ошибка парсера' : error.message;
 }
