@@ -12,6 +12,11 @@ export function wildberriesSearchConfigured() {
 }
 
 export async function searchWildberriesOffers(product, options = {}) {
+  if (product?.resolvedBy === 'wildberries-public-search'
+    && (product?.offers || []).some((offer) => offer?.provider === 'wildberries-public-search')) {
+    return [];
+  }
+
   const queries = buildQueries(product);
   if (!queries.length) return [];
 
@@ -185,7 +190,7 @@ async function fetchJson(url, options = {}) {
       headers: {
         accept: 'application/json,text/plain,*/*',
         'accept-language': 'ru-RU,ru;q=0.9,en;q=0.5',
-        'user-agent': process.env.WILDBERRIES_USER_AGENT || 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/135 Safari/537.36'
+        'user-agent': process.env.WILDBERRIES_USER_AGENT || 'Specly/0.4 (+https://github.com/Deenfoool/Specly)'
       },
       signal: controller.signal
     });
