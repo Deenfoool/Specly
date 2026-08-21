@@ -29,7 +29,11 @@ function getBrowser() {
     browserPromise = chromium.launch({
       headless: true,
       ...(CHROMIUM_EXECUTABLE_PATH ? { executablePath: CHROMIUM_EXECUTABLE_PATH } : {}),
-      args: ['--disable-dev-shm-usage', '--no-sandbox']
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--disable-dev-shm-usage',
+        '--no-sandbox'
+      ]
     }).catch((error) => {
       browserPromise = undefined;
       const wrapped = new Error('Chromium недоступен в текущем контейнере');
@@ -58,10 +62,27 @@ app.post(['/', '/api/compare'], async (req, res) => {
     validateRequest(urls);
 
     const browser = await getBrowser();
+    const chromeVersion = String(browser.version() || '').replace(/^Chromium\s*/i, '').trim();
+    const userAgent = process.env.BROWSER_USER_AGENT
+      || `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion || '131.0.0.0'} Safari/537.36`;
+
     context = await browser.newContext({
       locale: 'ru-RU',
       timezoneId: 'Europe/Moscow',
-      viewport: { width: 1365, height: 900 }
+      viewport: { width: 1920, height: 1080 },
+      screen: { width: 1920, height: 1080 },
+      userAgent,
+      javaScriptEnabled: true,
+      ignoreHTTPSErrors: true,
+      colorScheme: 'light',
+      extraHTTPHeaders: {
+        'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.7,en;q=0.6'
+      }
+    });
+
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
     });
 
     if (BLOCK_HEAVY_RESOURCES) {
@@ -163,6 +184,7 @@ async function waitForProductSignals(page, store, requested) {
       .first()
       .waitFor({ state: 'attached', timeout: Math.min(READY_TIMEOUT, 5_000) })
       .catch(() => {});
+    await page.waitForTimeout(800).catch(() => {});
     return;
   }
 
