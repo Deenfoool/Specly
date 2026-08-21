@@ -10,6 +10,7 @@ const STORE_DEFINITIONS = [
     productPaths: [/^\/products\//i]
   }),
   store('ozon', 'Ozon', ['ozon.ru', 'www.ozon.ru'], {
+    adapter: 'ozon',
     fetchStrategies: ['direct', 'browser', 'reader'],
     productPaths: [/^\/product\//i]
   }),
