@@ -150,14 +150,24 @@ async function getSessionPage(context, sessionPages, sessionKey) {
 }
 
 async function waitForProductSignals(page, store, requested) {
+  if (store?.id === 'ozon') {
+    // Ozon renders product data dynamically. Wait for the product shell first,
+    // then give the dedicated price widget a short independent window to appear.
+    await page.locator('h1, script[type="application/ld+json"], meta[property="og:title"]')
+      .first()
+      .waitFor({ state: 'attached', timeout: READY_TIMEOUT })
+      .catch(() => {});
+    await page.locator('[data-widget="webPrice"], [data-widget="price"], [data-widget*="webPrice"]')
+      .first()
+      .waitFor({ state: 'attached', timeout: Math.min(READY_TIMEOUT, 5_000) })
+      .catch(() => {});
+    return;
+  }
+
   const selectors = [];
 
   if (store?.id === 'dns' && requested.pathname.startsWith('/product/characteristics/')) {
     selectors.push('[class*="product-characteristics"]', '[class*="characteristics__spec"]');
-  }
-
-  if (store?.id === 'ozon') {
-    selectors.push('[data-widget="webPrice"]', '[data-widget*="webPrice"]');
   }
 
   selectors.push('h1', 'script[type="application/ld+json"]', '#__NEXT_DATA__', 'meta[property="og:title"]');
