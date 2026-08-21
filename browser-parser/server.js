@@ -9,6 +9,7 @@ const PORT = Number(process.env.PORT || 8080);
 const NAV_TIMEOUT = Number(process.env.NAV_TIMEOUT_MS || 25_000);
 const READY_TIMEOUT = Number(process.env.READY_TIMEOUT_MS || 7_000);
 const BLOCK_HEAVY_RESOURCES = process.env.BLOCK_HEAVY_RESOURCES === 'true';
+const CHROMIUM_EXECUTABLE_PATH = String(process.env.CHROMIUM_EXECUTABLE_PATH || '').trim();
 
 const app = express();
 app.disable('x-powered-by');
@@ -27,7 +28,8 @@ function getBrowser() {
   if (!browserPromise) {
     browserPromise = chromium.launch({
       headless: true,
-      args: ['--disable-dev-shm-usage']
+      ...(CHROMIUM_EXECUTABLE_PATH ? { executablePath: CHROMIUM_EXECUTABLE_PATH } : {}),
+      args: ['--disable-dev-shm-usage', '--no-sandbox']
     }).catch((error) => {
       browserPromise = undefined;
       const wrapped = new Error('Chromium недоступен в текущем контейнере');
