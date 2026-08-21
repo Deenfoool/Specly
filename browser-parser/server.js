@@ -83,12 +83,24 @@ app.post(['/', '/api/compare'], async (req, res) => {
 });
 
 export function createBrowserFetcher(context) {
-  return async (targetUrl, { store } = {}) => {
+  const sessionPages = new Map();
+
+  return async (targetUrl, { store, sessionKey = null } = {}) => {
     const requested = validateProductUrl(targetUrl);
-    const page = await context.newPage();
+    const reusable = Boolean(sessionKey);
+    const page = reusable
+      ? await getSessionPage(context, sessionPages, sessionKey)
+      : await context.newPage();
+
     try {
-      const response = await page.goto(requested.href, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
-      await waitForProductSignals(page);
+      const previousUrl = reusable && page.url() !== 'about:blank' ? page.url() : null;
+      const navigationOptions = {
+        waitUntil: 'domcontentloaded',
+        timeout: NAV_TIMEOUT,
+        ...(previousUrl ? { referer: previousUrl } : {})
+      };
+      const response = await page.goto(requested.href, navigationOptions);
+      await waitForProductSignals(page, store, requested);
       await page.waitForLoadState('networkidle', { timeout: 2_500 }).catch(() => {});
 
       const finalUrl = page.url();
@@ -115,7 +127,8 @@ export function createBrowserFetcher(context) {
         html,
         finalUrl,
         via: 'browser',
-        status: response?.status() ?? null
+        status: response?.status() ?? null,
+        sessionReused: Boolean(previousUrl)
       };
     } catch (error) {
       if (error?.code) throw error;
@@ -123,13 +136,32 @@ export function createBrowserFetcher(context) {
         error?.name === 'TimeoutError' ? `${store?.name || requested.hostname}: таймаут Chromium` : `${store?.name || requested.hostname}: Chromium не смог загрузить страницу`,
         { host: requested.hostname });
     } finally {
-      await page.close().catch(() => {});
+      if (!reusable) await page.close().catch(() => {});
     }
   };
 }
 
-async function waitForProductSignals(page) {
-  await page.locator('h1, script[type="application/ld+json"], #__NEXT_DATA__, meta[property="og:title"]')
+async function getSessionPage(context, sessionPages, sessionKey) {
+  const existing = sessionPages.get(sessionKey);
+  if (existing && !existing.isClosed()) return existing;
+  const page = await context.newPage();
+  sessionPages.set(sessionKey, page);
+  return page;
+}
+
+async function waitForProductSignals(page, store, requested) {
+  const selectors = [];
+
+  if (store?.id === 'dns' && requested.pathname.startsWith('/product/characteristics/')) {
+    selectors.push('[class*="product-characteristics"]', '[class*="characteristics__spec"]');
+  }
+
+  if (store?.id === 'ozon') {
+    selectors.push('[data-widget="webPrice"]', '[data-widget*="webPrice"]');
+  }
+
+  selectors.push('h1', 'script[type="application/ld+json"]', '#__NEXT_DATA__', 'meta[property="og:title"]');
+  await page.locator(selectors.join(', '))
     .first()
     .waitFor({ state: 'attached', timeout: READY_TIMEOUT })
     .catch(() => {});
