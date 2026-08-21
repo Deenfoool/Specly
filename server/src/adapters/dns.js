@@ -1,6 +1,6 @@
-import { htmlToLines } from '../html.js';
 import { fetchHtml } from '../fetchPage.js';
 import { parseCommonProduct } from './common.js';
+import { extractDnsCharacteristicLines } from './dnsStructured.js';
 
 export async function parseDns(url, options = {}) {
   const parsed = new URL(url);
@@ -13,14 +13,18 @@ export async function parseDns(url, options = {}) {
     throw error;
   }
 
-  const main = await fetchHtml(url, options);
+  const dnsOptions = withDnsBrowserSession(options, parsed);
+  const main = await fetchHtml(url, dnsOptions);
   const characteristicsUrl = toCharacteristicsUrl(main.finalUrl);
   let extraLines = [];
 
   if (characteristicsUrl && characteristicsUrl !== main.finalUrl) {
     try {
-      const full = await fetchHtml(characteristicsUrl, options);
-      extraLines = htmlToLines(full.html);
+      const characteristicsOptions = main.via === 'browser'
+        ? { ...dnsOptions, allowDirect: false }
+        : dnsOptions;
+      const full = await fetchHtml(characteristicsUrl, characteristicsOptions);
+      extraLines = extractDnsCharacteristicLines(full.html);
     } catch {
       // Summary specs from the main product page are still useful.
     }
@@ -42,6 +46,12 @@ export function toCharacteristicsUrl(value) {
   if (!match) return value;
   url.pathname = `/product/characteristics/${match[1]}`;
   return url.href;
+}
+
+export function dnsBrowserSessionKey(value) {
+  const url = value instanceof URL ? value : new URL(value);
+  const match = url.pathname.match(/^\/product\/(?:characteristics\/)?([^/]+)/i);
+  return match ? `dns:${match[1]}` : `dns:${url.pathname}`;
 }
 
 export function extractProductCandidates(content, origin = 'https://www.dns-shop.ru') {
@@ -84,4 +94,17 @@ export function extractProductCandidates(content, origin = 'https://www.dns-shop
   }
 
   return results;
+}
+
+function withDnsBrowserSession(options, url) {
+  if (typeof options.browserFetcher !== 'function') return options;
+  const sessionKey = dnsBrowserSessionKey(url);
+  const browserFetcher = options.browserFetcher;
+  return {
+    ...options,
+    browserFetcher: (targetUrl, context = {}) => browserFetcher(targetUrl, {
+      ...context,
+      sessionKey
+    })
+  };
 }
