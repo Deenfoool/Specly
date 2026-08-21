@@ -20,7 +20,8 @@ const STORE_DEFINITIONS = [
     productPaths: [/^\/card\//i, /^\/product--/i]
   }),
   store('wildberries', 'Wildberries', ['wildberries.ru', 'www.wildberries.ru'], {
-    fetchStrategies: ['direct', 'browser', 'reader'],
+    adapter: 'wildberries',
+    fetchStrategies: ['public-search', 'direct', 'browser', 'reader'],
     productPaths: [/^\/catalog\/\d+\/detail\.aspx/i]
   }),
   store('citilink', 'Ситилинк', ['citilink.ru', 'www.citilink.ru'], {
