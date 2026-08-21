@@ -1,7 +1,16 @@
-FROM mcr.microsoft.com/playwright:v1.62.0-noble
+FROM node:22-bookworm-slim
 
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    chromium \
+    ca-certificates \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
