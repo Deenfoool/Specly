@@ -4,11 +4,13 @@ import { buildProductIdentity } from '../identity.js';
 import { findStoreByHost, supportedStores as registryStores } from '../stores.js';
 import { parseDns } from './dns.js';
 import { parseMvideo } from './mvideo.js';
+import { parseOzon } from './ozon.js';
 import { parseGenericStore } from './generic.js';
 
 const ADAPTERS = {
   dns: parseDns,
-  mvideo: parseMvideo
+  mvideo: parseMvideo,
+  ozon: parseOzon
 };
 
 export async function parseProduct(value, options = {}) {
