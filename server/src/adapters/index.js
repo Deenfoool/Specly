@@ -5,12 +5,14 @@ import { findStoreByHost, supportedStores as registryStores } from '../stores.js
 import { parseDns } from './dns.js';
 import { parseMvideo } from './mvideo.js';
 import { parseOzon } from './ozon.js';
+import { parseWildberries } from './wildberries.js';
 import { parseGenericStore } from './generic.js';
 
 const ADAPTERS = {
   dns: parseDns,
   mvideo: parseMvideo,
-  ozon: parseOzon
+  ozon: parseOzon,
+  wildberries: parseWildberries
 };
 
 export async function parseProduct(value, options = {}) {
@@ -78,7 +80,8 @@ function isPartialEligible(error) {
   return [
     'UPSTREAM_BLOCKED', 'EMPTY_PAGE', 'UPSTREAM_HTTP_ERROR', 'UPSTREAM_TIMEOUT',
     'UPSTREAM_NETWORK_ERROR', 'READER_UNAVAILABLE', 'READER_TIMEOUT',
-    'UNEXPECTED_CONTENT_TYPE', 'PRODUCT_NOT_FOUND', 'PRODUCT_PARSE_FAILED'
+    'UNEXPECTED_CONTENT_TYPE', 'PRODUCT_NOT_FOUND', 'PRODUCT_PARSE_FAILED',
+    'WILDBERRIES_SEARCH_ERROR'
   ].includes(error?.code);
 }
 
