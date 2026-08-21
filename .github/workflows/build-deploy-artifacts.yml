@@ -1,0 +1,63 @@
+name: Build deploy artifacts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: browser-parser/package-lock.json
+
+      - name: Run parser unit tests
+        run: npm test
+
+      - name: Build Yandex Cloud Function ZIP
+        run: |
+          rm -rf dist
+          mkdir -p dist/function/server
+          cp yandex-function.js dist/function/yandex-function.js
+          cp package.json dist/function/package.json
+          cp -R server/src dist/function/server/src
+          cd dist/function
+          zip -r ../specly-yandex-function.zip yandex-function.js package.json server/src
+
+      - name: Verify function entrypoint syntax
+        run: node --check yandex-function.js
+
+      - name: Build Chromium container image
+        run: docker build -f browser-parser/Dockerfile -t specly-browser-parser:ci .
+
+      - name: Build Chromium source ZIP
+        run: |
+          mkdir -p dist/browser
+          cp -R browser-parser dist/browser/browser-parser
+          cp -R server dist/browser/server
+          cd dist/browser
+          zip -r ../specly-browser-parser-source.zip browser-parser server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: specly-yandex-function
+          path: dist/specly-yandex-function.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: specly-browser-parser-source
+          path: dist/specly-browser-parser-source.zip
+          if-no-files-found: error
+          retention-days: 7
