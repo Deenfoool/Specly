@@ -1,9 +1,11 @@
 import { getYandexMarketOffer, yandexMarketConfigured } from './yandexMarket.js';
 import { searchAliExpressOffers, aliexpressConfigured } from './aliexpress.js';
+import { searchWildberriesOffers, wildberriesSearchConfigured } from './wildberries.js';
 
 export async function enrichProductOffers(product, { providers = null } = {}) {
   const existing = Array.isArray(product.offers) ? product.offers : [];
   const activeProviders = providers || [
+    { id: 'wildberries-public-search', resolve: searchWildberriesOffers },
     { id: 'yandex-market-affiliate', resolve: getYandexMarketOffer },
     { id: 'aliexpress-affiliate', resolve: searchAliExpressOffers }
   ];
@@ -34,6 +36,7 @@ export async function enrichProductOffers(product, { providers = null } = {}) {
 
 export function getOfferProviderStatus() {
   return {
+    wildberriesPublicSearch: wildberriesSearchConfigured(),
     yandexMarketAffiliate: yandexMarketConfigured(),
     aliexpressAffiliate: aliexpressConfigured()
   };
