@@ -1,14 +1,14 @@
 # Live store audit
 
-Дата проверки: 2026-08-20. Проверялись публичные карточки без CAPTCHA bypass, прокси, расширений и чужих cookie.
+Дата исходной проверки страниц: 2026-08-20. Архитектурные обновления по Ozon/Wildberries: 2026-08-21. Проверяются только публичные страницы/клиентские JSON-источники без CAPTCHA bypass, прокси, расширений и чужих cookie.
 
-| Магазин | Direct fetch из текущей server-среды | Chromium | Доступные данные | Текущий вывод |
+| Магазин | Direct fetch из текущей server-среды | Chromium / JSON | Доступные данные | Текущий вывод |
 |---|---|---|---|---|
-| DNS | HTTP 401 | Основная карточка открылась; отдельный `/product/characteristics/` получил `Access Blocked` | На основной карточке есть title, JSON-LD и краткие specs | Основная карточка полезна; полные specs могут стать partial |
+| DNS | HTTP 401 | Основная карточка открывается; для `/product/characteristics/` добавлен same-session Chromium переход и DNS structured extractor | title, JSON-LD, краткие specs; полные specs при доступной characteristics page | Chromium-сессия теперь переиспользуется между карточкой и characteristics; при блоке остаётся partial |
 | М.Видео | HTTP 200, но только общая оболочка сайта | Карточка и видимые specs открылись | title, модель, варианты, характеристики | Direct shell отклоняется как `PRODUCT_NOT_FOUND`, Chromium является рабочим fallback |
-| Ozon | Цикл redirect в direct-клиенте | Карточка закончилась, но Chromium показал title, offer и рекомендации | rendered state и встроенный скрипт состояния | Chromium полезен; финальный URL нужно валидировать внутри того же store |
-| Яндекс Маркет | HTTP 200 с антибот-страницей | SmartCaptcha (`Вы не робот?`) | Поисковый индекс видит metadata/specs; Referral API optional | При CAPTCHA возвращается partial/offer, обход не выполняется |
-| Wildberries | HTTP 498 | HTML-оболочка и product metadata загрузились, данные карточки остались в spinner | `<title>`/description и product id; specs/price не загрузились | Metadata можно сохранить, отсутствие specs помечается partial |
+| Ozon | Цикл redirect в direct-клиенте | Dedicated Chromium adapter ждёт product signals и `data-widget="webPrice"`, затем читает embedded state | title, price, rating/reviews, embedded characteristics | Chromium + embedded state являются основным путём; generic parser остаётся fallback |
+| Яндекс Маркет | HTTP 200 с антибот-страницей | SmartCaptcha (`Вы не робот?`) | Referral API может дать metadata/offer | При CAPTCHA обход не выполняется; metadata/offer и specs должны резолвиться разными источниками |
+| Wildberries | HTTP 498 у страницы | Основной новый путь — storefront JSON search `u-search.wb.ru/search.wb.ru ... /v18/search`; Chromium страницы остаётся fallback | id, name, brand, price, rating, feedbacks, quantity, supplier | JSON search интегрирован как source resolver и OfferResolver; цена привязана к `dest`, exact-match проверяет модель/модификацию. Нужна повторная live-проверка после деплоя |
 | Ситилинк | HTTP 429 | Карточка и `/properties/` открылись | JSON-LD, `__NEXT_DATA__`, product header, видимые specs | Chromium + hydration state являются рабочими источниками |
 | ВсеИнструменты | HTTP 403 | Интерактивная антибот-проверка | Поисковый индекс содержит характеристики | Не решать challenge автоматически; graceful partial fallback |
 
@@ -22,4 +22,10 @@
 - Ситилинк: `https://www.citilink.ru/product/smartfon-samsung-galaxy-s10-128gb-sm-g975f-chernyi-1124187/properties/`
 - ВсеИнструменты: `https://www.vseinstrumenti.ru/product/holodilnik-bosch-kgn39xi30u-13139071/`
 
-Live-результаты не являются постоянной гарантией: магазины меняют HTML, региональные ответы и антибот-правила. Для повторной проверки используется `npm run test:live`.
+## Wildberries storefront JSON
+
+Внутренний web-поиск Wildberries, который вызывается публичной витриной, возвращает JSON с `id`, `name`, `brand`, `sizes[].price`, рейтингами, отзывами и `totalQuantity`. Specly использует этот источник без пользовательских cookies и без обхода challenge.
+
+`WILDBERRIES_DEST` задаёт региональный `dest`. Это важно: публичная цена/наличие Wildberries могут зависеть от региона, аккаунта и способа оплаты, поэтому offer сохраняет `regionDest` и соответствующее пояснение.
+
+Live-результаты не являются постоянной гарантией: магазины меняют HTML, JSON-схемы, региональные ответы и антибот-правила. Unit tests используют fixtures; live-проверки запускаются отдельно.
